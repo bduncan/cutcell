@@ -1,11 +1,15 @@
+#include <CGAL/Gmpz.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
+#include <CGAL/Nef_polyhedron_3.h>
 #include <iostream>
 
-typedef CGAL::Simple_cartesian<double> Kernel;
-typedef Kernel::Point_3 Point_3;
+typedef CGAL::Extended_homogeneous<CGAL::Gmpz> Kernel;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
+typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Polyhedron::Vertex_iterator Vertex_iterator;
+typedef Kernel::Vector_3 Vector;
+typedef Kernel::Aff_transformation_3 Aff_transformation;
 
 template <class Poly>
 typename Poly::Halfedge_handle make_cube_3( Poly& P) {
@@ -38,8 +42,19 @@ int main() {
     Polyhedron P;
 
     make_cube_3(P);
-    CGAL::set_ascii_mode( std::cout);
-    for (Vertex_iterator v = P.vertices_begin(); v != P.vertices_end(); ++v)
-        std::cout << v->point() << std::endl;
-    return 0;
+
+    Nef_polyhedron N(P);
+    Aff_transformation Aff(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
+    N.transform(Aff);
+    if (N.is_simple()) {
+        N.convert_to_polyhedron(P);
+        //std::cout << N;
+        CGAL::set_ascii_mode( std::cout);
+        for (Vertex_iterator v = P.vertices_begin(); v != P.vertices_end(); ++v)
+            std::cout << v->point() << std::endl;
+        return 0;
+    } else {
+        std::cerr << "N is not a 2-manifold" << std::endl;
+        return 1;
+    }
 }
