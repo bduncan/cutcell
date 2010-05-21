@@ -1,10 +1,14 @@
-#include <CGAL/Gmpz.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/Nef_polyhedron_3.h>
+#include <CGAL/MP_Float.h>
+#include <CGAL/Quotient.h>
 #include <iostream>
 
-typedef CGAL::Extended_homogeneous<CGAL::Gmpz> Kernel;
+typedef CGAL::Filtered_kernel<
+        CGAL::Simple_cartesian<
+        CGAL::Quotient<
+        CGAL::MP_Float> > > Kernel;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Polyhedron::Vertex_iterator Vertex_iterator;
@@ -45,6 +49,8 @@ int main() {
 
     Nef_polyhedron N(P);
     Aff_transformation Aff(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
+    N.transform(Aff);
+    N.transform(Aff);
     N.transform(Aff);
     if (N.is_simple()) {
         N.convert_to_polyhedron(P);
