@@ -16,8 +16,8 @@ if ( CGAL_FOUND )
 
   include( CGAL_CreateSingleSourceCGALProgram )
 
-  create_single_source_cgal_program( "cutcell.cpp" )
-  create_single_source_cgal_program( "simplePH.cpp" )
+  create_single_source_cgal_program( "UnionTest.cpp" )
+  create_single_source_cgal_program( "IntersectionTest.cpp" )
 
 else()
   
