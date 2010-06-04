@@ -41,19 +41,57 @@ typename Poly::Halfedge_handle make_cube_3( Poly& P) {
     return h;
 }
 
+enum Cell { Solid, Fluid, Cut };
 
 int main() {
     Polyhedron P;
 
+    std::cout << "Making cube" << std::endl;
     make_cube_3(P);
 
-    Nef_polyhedron N(P);
-    Aff_transformation Aff(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
-    N.transform(Aff);
-    N.transform(Aff);
-    N.transform(Aff);
-    if (N.is_simple()) {
-        N.convert_to_polyhedron(P);
+    Nef_polyhedron N[10][10][10];
+    Nef_polyhedron N1;
+    Cell cell[10][10][10];
+    std::cout << "Making grid" << std::endl;
+    for (int x = 0; x < 10; x++)
+        for (int y = 0; y < 10; y++)
+            for (int z = 0; z < 10; z++) {
+                N[x][y][z] = P;
+                Aff_transformation Aff(CGAL::TRANSLATION, Vector(x,y,z));
+                N[x][y][z].transform(Aff);
+            }
+
+    N1.convert_to_polyhedron(P);
+    //std::cout << N;
+    CGAL::set_ascii_mode( std::cout);
+    for (Vertex_iterator v = P.vertices_begin(); v != P.vertices_end(); ++v)
+        std::cout << v->point() << std::endl;
+    Aff_transformation Aff(2,0,0,0.5,
+                           0,2,0,0.5,
+                           0,0,2,0.5);
+    std::cout << "Transforming..." << std::endl;
+    N1.transform(Aff);
+    N1.convert_to_polyhedron(P);
+
+    std::cout << "Computing Union" << std::endl;
+    for (int x = 0; x < 10; x++)
+        for (int y = 0; y < 10; y++)
+            for (int z = 0; z < 10; z++) {
+                Nef_polyhedron I = N1 * N[x][y][z];
+                if (z == 1) {
+                    I.convert_to_polyhedron(P);
+                }
+                if (I.is_empty())
+                    cell[x][y][z] = Fluid;
+                else if (I == N[x][y][z])
+                    cell[x][y][z] = Solid;
+                else
+                    cell[x][y][z] = Cut;
+                std::cout << cell[x][y][z];
+            }
+
+    if (N1.is_simple()) {
+        N1.convert_to_polyhedron(P);
         //std::cout << N;
         CGAL::set_ascii_mode( std::cout);
         for (Vertex_iterator v = P.vertices_begin(); v != P.vertices_end(); ++v)
