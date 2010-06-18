@@ -2,6 +2,7 @@
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
+#include <CGAL/IO/Polyhedron_VRML_2_ostream.h>
 #include <fstream>
 #include <iostream>
 
@@ -139,14 +140,14 @@ int main() {
     Nef_polyhedron UnitCube;
     const int NX = 5, NY = 5, NZ = 5;
 
-    std::cout << "Making cube" << std::endl;
+    std::cerr << "Making cube" << std::endl;
     std::istringstream in(cube); // Load the definition of a unit cube from string
     in >> UnitCube;
 
     Nef_polyhedron N[NX][NY][NZ];
     Nef_polyhedron N1(UnitCube);
     Cell cell[NX][NY][NZ];
-    std::cout << "Making grid" << std::endl;
+    std::cerr << "Making grid" << std::endl;
     for (int x = 0; x < NX; x++)
         for (int y = 0; y < NY; y++)
             for (int z = 0; z < NZ; z++) {
@@ -157,11 +158,12 @@ int main() {
 
     Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5,0.5,0.5));
     Aff_transformation Aff2(CGAL::SCALING, 1.5);
-    std::cout << "Transforming..." << std::endl;
+    std::cerr << "Transforming..." << std::endl;
     N1.transform(Aff1);
     N1.transform(Aff2);
 
-    std::cout << "Computing Union. Solid = " << Solid << ", Fluid = " << Fluid << ", Cut = " << Cut << std::endl;
+    CGAL::VRML_2_ostream out(std::cout);
+    std::cerr << "Computing Union. Solid = " << Solid << ", Fluid = " << Fluid << ", Cut = " << Cut << std::endl;
     for (int x = 0; x < NX; x++) {
         for (int y = 0; y < NY; y++)
             for (int z = 0; z < NZ; z++) {
@@ -172,21 +174,13 @@ int main() {
                     cell[x][y][z] = Fluid;
                 else
                     cell[x][y][z] = Cut;
-                std::cout << cell[x][y][z];
+                std::cerr << x << " " << y << " " << z << " = " << cell[x][y][z] << std::endl;
+                Polyhedron P;
+                I.convert_to_polyhedron(P);
+                out << P;
             }
-        std::cout << std::endl;
+        std::cerr << std::endl;
     }
 
-    if (N1.is_simple()) {
-        Polyhedron P;
-        N1.convert_to_polyhedron(P);
-        //std::cout << N;
-        CGAL::set_ascii_mode( std::cout);
-        for (Vertex_iterator v = P.vertices_begin(); v != P.vertices_end(); ++v)
-            std::cout << v->point() << std::endl;
-        return 0;
-    } else {
-        std::cerr << "N is not a 2-manifold" << std::endl;
-        return 1;
-    }
+    return 0;
 }
