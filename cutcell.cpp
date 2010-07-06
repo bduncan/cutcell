@@ -3,6 +3,8 @@
 #include <CGAL/Polyhedron_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <CGAL/IO/Polyhedron_VRML_2_ostream.h>
+#include <CGAL/centroid.h>
+#include <list>
 #include <fstream>
 #include <iostream>
 
@@ -12,8 +14,6 @@ typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Polyhedron::Vertex_iterator Vertex_iterator;
 typedef Kernel::Vector_3 Vector;
 typedef Kernel::Aff_transformation_3 Aff_transformation;
-
-enum Cell { Solid, Fluid, Cut };
 
 static char cube[] = "Selective Nef Complex\n\
 standard\n\
@@ -136,6 +136,20 @@ sfaces     16\n\
 15 { 7, 42 , , , 0 } 0\n\
 /* end Selective Nef complex */\n";
 
+enum Type { Solid, Fluid, Cut };
+
+class Cell {
+    public:
+    // Cell properties
+    Type type;
+    Kernel::Point_3 centroid;
+    Kernel::FT volume;
+
+    // Face properties
+    Kernel::FT faceArea[2][2][2];
+    Vector normal[2][2][2];
+};
+
 int main() {
     Nef_polyhedron UnitCube;
     const int NX = 5, NY = 5, NZ = 5;
@@ -169,12 +183,19 @@ int main() {
             for (int z = 0; z < NZ; z++) {
                 Nef_polyhedron I = N[x][y][z] - N1;
                 if (I.is_empty())
-                    cell[x][y][z] = Solid;
+                    cell[x][y][z].type = Solid;
                 else if (I == N[x][y][z])
-                    cell[x][y][z] = Fluid;
+                    cell[x][y][z].type = Fluid;
                 else
-                    cell[x][y][z] = Cut;
-                std::cerr << x << " " << y << " " << z << " = " << cell[x][y][z] << std::endl;
+                    cell[x][y][z].type = Cut;
+                if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
+                    std::list<Nef_polyhedron::Point_3> points_3;
+                    Nef_polyhedron::Vertex_const_iterator v;
+                    CGAL_forall_vertices(v, I) {
+                        points_3.push_back(v->point());
+                    }
+                    cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                }
                 Polyhedron P;
                 I.convert_to_polyhedron(P);
                 out << P;
