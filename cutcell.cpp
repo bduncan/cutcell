@@ -1,6 +1,7 @@
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/Polyhedron_3.h>
+#include <CGAL/Polyhedron_traits_with_normals_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <CGAL/IO/Polyhedron_VRML_2_ostream.h>
 #include <CGAL/centroid.h>
@@ -9,10 +10,12 @@
 #include <iostream>
 
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
-typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
+typedef CGAL::Polyhedron_traits_with_normals_3<Kernel> Traits;
+typedef CGAL::Polyhedron_3<Traits> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Polyhedron::Vertex_iterator Vertex_iterator;
 typedef Kernel::Vector_3 Vector;
+typedef Kernel::Direction_3 Direction;
 typedef Kernel::Aff_transformation_3 Aff_transformation;
 
 static char cube[] = "Selective Nef Complex\n\
@@ -136,6 +139,27 @@ sfaces     16\n\
 15 { 7, 42 , , , 0 } 0\n\
 /* end Selective Nef complex */\n";
 
+struct Normal_vector {
+    template <class Facet>
+    typename Facet::Plane_3 operator()( Facet& f) {
+        typename Facet::Halfedge_handle h = f.halfedge();
+        // Facet::Plane_3 is the normal vector type. We assume the
+        // CGAL Kernel here and use its global functions.
+        return typename Facet::Plane_3(CGAL::cross_product(
+            h->next()->vertex()->point() - h->vertex()->point(),
+            h->next()->next()->vertex()->point() - h->next()->vertex()->point()));
+    }
+};
+
+class compare
+{
+    public:
+    bool operator()(const Direction x, const Direction y)
+    {
+        return x != y;
+    }
+};
+
 enum Type { Solid, Fluid, Cut };
 
 class Cell {
@@ -146,7 +170,7 @@ class Cell {
     Kernel::FT volume;
 
     // Face properties
-    Kernel::FT faceArea[2][2][2];
+    std::map<Direction, std::vector<Kernel::FT>, compare> faceArea;
     Vector normal[2][2][2];
 };
 
@@ -182,6 +206,9 @@ int main() {
         for (int y = 0; y < NY; y++)
             for (int z = 0; z < NZ; z++) {
                 Nef_polyhedron I = N[x][y][z] - N1;
+                Polyhedron P;
+                I.convert_to_polyhedron(P);
+                out << P;
                 if (I.is_empty())
                     cell[x][y][z].type = Solid;
                 else if (I == N[x][y][z])
@@ -195,10 +222,21 @@ int main() {
                         points_3.push_back(v->point());
                     }
                     cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+
+                    std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
+                                   Normal_vector());
+
+                    for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+                        if (fi->is_triangle()) {
+                            // circulate halfedges => vertices
+                            Polyhedron::Halfedge_const_handle h1, h2, h3;
+                            h1 = fi->halfedge();
+                            h2 = h1->next();
+                            h3 = h2->next();
+                            cell[x][y][z].faceArea[Direction(fi->plane())].push_back(squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
+                        }
+                    }
                 }
-                Polyhedron P;
-                I.convert_to_polyhedron(P);
-                out << P;
             }
         std::cerr << std::endl;
     }
