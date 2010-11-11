@@ -160,6 +160,14 @@ class compare
     }
 };
 
+class Face {
+    public:
+    Vector normal;
+    Kernel::Point_3 centroid;
+    Kernel::FT area;
+    bool fluid; // whether our neighbour is a fluid cell.
+};
+
 enum Type { Solid, Fluid, Cut };
 
 class Cell {
@@ -168,10 +176,10 @@ class Cell {
     Type type;
     Kernel::Point_3 centroid;
     Kernel::FT volume;
+    int parent[2]; // I, J, K of parent cell.
 
     // Face properties
-    std::map<Direction, std::vector<Kernel::FT>, compare> faceArea;
-    Vector normal[2][2][2];
+    std::map<Direction, std::vector<Face>, compare> faces;
 };
 
 int main() {
@@ -215,6 +223,9 @@ int main() {
                     cell[x][y][z].type = Fluid;
                 else
                     cell[x][y][z].type = Cut;
+                cell[x][y][z].parent[0] = x;
+                cell[x][y][z].parent[1] = y;
+                cell[x][y][z].parent[2] = z;
                 if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
                     std::list<Nef_polyhedron::Point_3> points_3;
                     Nef_polyhedron::Vertex_const_iterator v;
@@ -222,18 +233,29 @@ int main() {
                         points_3.push_back(v->point());
                     }
                     cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                    cell[x][y][z].volume = 0.0; // FIXME
 
                     std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
                                    Normal_vector());
 
                     for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
                         if (fi->is_triangle()) {
+                            Face newFace;
                             // circulate halfedges => vertices
                             Polyhedron::Halfedge_const_handle h1, h2, h3;
                             h1 = fi->halfedge();
                             h2 = h1->next();
                             h3 = h2->next();
-                            cell[x][y][z].faceArea[Direction(fi->plane())].push_back(squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
+                            newFace.area = squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
+                            newFace.normal = fi->plane();
+
+                            points_3.clear();
+                            points_3.push_back(h1->vertex()->point());
+                            points_3.push_back(h2->vertex()->point());
+                            points_3.push_back(h3->vertex()->point());
+                            newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                            newFace.fluid = false; // FIXME
+                            cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
                         }
                     }
                 }
