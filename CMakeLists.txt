@@ -9,6 +9,7 @@ if ( COMMAND cmake_policy )
 endif()
 
 find_package(CGAL QUIET COMPONENTS Core Qt3 )
+include(${CGAL_USE_FILE})
 
 find_package(Qt3-patched )
 
