@@ -170,13 +170,24 @@ class Face {
 
 enum Type { Solid, Fluid, Cut };
 
+class Index_3 {
+    public:
+    Index_3() : i_(0), j_(0), k_(0) {};
+    Index_3(int i, int j, int k) : i_(i), j_(j), k_(k) {};
+    int i() { return i_; };
+    int j() { return j_; };
+    int k() { return k_; };
+    private:
+    int i_, j_, k_;
+};
+
 class Cell {
     public:
     // Cell properties
     Type type;
     Kernel::Point_3 centroid;
     Kernel::FT volume;
-    int parent[2]; // I, J, K of parent cell.
+    Index_3 parent; // I, J, K of parent cell.
 
     // Face properties
     std::map<Direction, std::vector<Face>, compare> faces;
@@ -223,9 +234,7 @@ int main() {
                     cell[x][y][z].type = Fluid;
                 else
                     cell[x][y][z].type = Cut;
-                cell[x][y][z].parent[0] = x;
-                cell[x][y][z].parent[1] = y;
-                cell[x][y][z].parent[2] = z;
+                cell[x][y][z].parent = Index_3(x, y, z);
                 if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
                     std::list<Nef_polyhedron::Point_3> points_3;
                     Nef_polyhedron::Vertex_const_iterator v;
