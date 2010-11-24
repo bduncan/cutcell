@@ -55,6 +55,8 @@ if ( CGAL_FOUND )
 
   create_single_source_cgal_program( "UnionTest.cpp" )
   create_single_source_cgal_program( "IntersectionTest.cpp" )
+  create_single_source_cgal_program( "make_cube_3.cpp" )
+  create_single_source_cgal_program( "cutcell.cpp" )
 
 else()
 
