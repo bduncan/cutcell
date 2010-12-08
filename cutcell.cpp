@@ -200,6 +200,10 @@ int main() {
     std::cerr << "Making cube" << std::endl;
     std::istringstream in(cube); // Load the definition of a unit cube from string
     in >> UnitCube;
+    assert(UnitCube.number_of_vertices() == 8);
+    assert(UnitCube.number_of_facets() == 6);
+    assert(UnitCube.number_of_edges() == 12);
+    assert(UnitCube.number_of_volumes() == 2);
 
     Nef_polyhedron N[NX][NY][NZ];
     Nef_polyhedron N1(UnitCube);
@@ -209,7 +213,7 @@ int main() {
         for (int y = 0; y < NY; y++)
             for (int z = 0; z < NZ; z++) {
                 N[x][y][z] = UnitCube;
-                Aff_transformation Aff(CGAL::TRANSLATION, Vector(x,y,z));
+                Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
                 N[x][y][z].transform(Aff);
             }
 
@@ -238,6 +242,7 @@ int main() {
                 if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
                     std::list<Nef_polyhedron::Point_3> points_3;
                     Nef_polyhedron::Vertex_const_iterator v;
+
                     CGAL_forall_vertices(v, I) {
                         points_3.push_back(v->point());
                     }
@@ -248,24 +253,26 @@ int main() {
                                    Normal_vector());
 
                     for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-                        if (fi->is_triangle()) {
-                            Face newFace;
-                            // circulate halfedges => vertices
-                            Polyhedron::Halfedge_const_handle h1, h2, h3;
-                            h1 = fi->halfedge();
-                            h2 = h1->next();
-                            h3 = h2->next();
-                            newFace.area = squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
-                            newFace.normal = fi->plane();
+                        Face newFace;
+                        Polyhedron::Halfedge_const_handle h1, h2, h3;
 
-                            points_3.clear();
-                            points_3.push_back(h1->vertex()->point());
-                            points_3.push_back(h2->vertex()->point());
-                            points_3.push_back(h3->vertex()->point());
-                            newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
-                            newFace.fluid = false; // FIXME
-                            cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
-                        }
+                        assert(fi->is_triangle());
+                        // circulate halfedges => vertices
+                        h1 = fi->halfedge();
+                        h2 = h1->next();
+                        h3 = h2->next();
+                        assert(h3->next() == h1);
+
+                        newFace.area = squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
+                        newFace.normal = fi->plane();
+
+                        points_3.clear();
+                        points_3.push_back(h1->vertex()->point());
+                        points_3.push_back(h2->vertex()->point());
+                        points_3.push_back(h3->vertex()->point());
+                        newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                        newFace.fluid = false; // FIXME
+                        cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
                     }
                 }
             }
