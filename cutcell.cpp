@@ -5,6 +5,7 @@
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <CGAL/IO/Polyhedron_VRML_2_ostream.h>
 #include <CGAL/centroid.h>
+#include <CGAL/Triangulation_3.h>
 #include <list>
 #include <fstream>
 #include <iostream>
@@ -13,6 +14,7 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
 typedef CGAL::Polyhedron_traits_with_normals_3<Kernel> Traits;
 typedef CGAL::Polyhedron_3<Traits> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
+typedef CGAL::Triangulation_3<Kernel> Triangulation;
 typedef Kernel::Vector_3 Vector;
 typedef Kernel::Direction_3 Direction;
 typedef Kernel::Aff_transformation_3 Aff_transformation;
@@ -246,7 +248,16 @@ int main() {
                         points_3.push_back(v->point());
                     }
                     cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
-                    cell[x][y][z].volume = 0.0; // FIXME
+
+                    Triangulation T(points_3.begin(), points_3.end());
+                    assert(T.is_valid());
+                    // FIXME rewrite as accumulate
+                    cell[x][y][z].volume = 0.0;
+                    for (Triangulation::Finite_cells_iterator tcell = T.finite_cells_begin(); tcell != T.finite_cells_end(); ++tcell) {
+                        assert(T.is_cell(tcell));
+                        cell[x][y][z].volume += T.tetrahedron(tcell).volume();
+                    }
+                    assert(cell[x][y][z].volume > 0.0);
 
                     std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
                                    Normal_vector());
@@ -263,6 +274,7 @@ int main() {
                         assert(h3->next() == h1);
 
                         newFace.area = CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
+                        assert(newFace.area > 0.0);
                         newFace.normal = fi->plane();
 
                         points_3.clear();
