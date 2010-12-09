@@ -13,7 +13,6 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
 typedef CGAL::Polyhedron_traits_with_normals_3<Kernel> Traits;
 typedef CGAL::Polyhedron_3<Traits> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
-typedef Polyhedron::Vertex_iterator Vertex_iterator;
 typedef Kernel::Vector_3 Vector;
 typedef Kernel::Direction_3 Direction;
 typedef Kernel::Aff_transformation_3 Aff_transformation;
@@ -217,7 +216,7 @@ int main() {
                 N[x][y][z].transform(Aff);
             }
 
-    Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5,0.5,0.5));
+    Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
     Aff_transformation Aff2(CGAL::SCALING, 1.5);
     std::cerr << "Transforming..." << std::endl;
     N1.transform(Aff1);
@@ -263,7 +262,7 @@ int main() {
                         h3 = h2->next();
                         assert(h3->next() == h1);
 
-                        newFace.area = squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
+                        newFace.area = CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
                         newFace.normal = fi->plane();
 
                         points_3.clear();
