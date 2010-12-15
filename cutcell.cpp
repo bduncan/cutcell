@@ -169,6 +169,7 @@ sfaces     16\n\
 15 { 7, 42 , , , 1 } 1\n\
 /* end Selective Nef complex */\n\
 ";
+Nef_polyhedron UnitCube;
 
 // A function to compute the plane normal of a Facet
 // From CGAL-3.7/examples/Polyhedron/polyhedron_prog_normals.cpp
@@ -232,8 +233,129 @@ class Cell {
     std::map<Direction, std::vector<Face>, compare> faces;
 };
 
+class Grid {
+    public:
+    std::vector< std::vector< std::vector< Nef_polyhedron > > > N;
+    std::vector< std::vector< std::vector< Cell > > > cell;
+    Grid(int X, int Y, int Z)
+    {
+        // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
+        N = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z)));
+        // Create the array to store the cell (and therefore face) properties at
+        // each point.
+        cell = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
+        // Copy and translate the cube for each point.
+        for (int x = 0; x < N.size(); x++)
+            for (int y = 0; y < N[x].size(); y++)
+                for (int z = 0; z < N[y].size(); z++) {
+                    N[x][y][z] = UnitCube;
+                    Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
+                    N[x][y][z].transform(Aff);
+                }
+    };
+    void cut(Nef_polyhedron N1)
+    {
+        // Put the test cube at an appropriate place
+        Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
+        Aff_transformation Aff2(CGAL::SCALING, 1.5);
+        std::cerr << "Transforming..." << std::endl;
+        N1.transform(Aff1);
+        N1.transform(Aff2);
+
+        // Create a VRML output stream.
+        CGAL::VRML_2_ostream out(std::cout);
+        for (int x = 0; x < N.size(); x++) {
+            for (int y = 0; y < N[x].size(); y++)
+                for (int z = 0; z < N[y].size(); z++) {
+                    // Compute the intersection of this part of the grid with the
+                    // test cube.
+                    Nef_polyhedron I = N[x][y][z] - N1;
+                    Polyhedron P;
+                    // Convert this new cut Nef_polyhedron I into the Polyhedron P.
+                    I.convert_to_polyhedron(P);
+                    // Output the Polyhedron in VRML format.
+                    out << P;
+
+                    // Set the type of the new cell.
+                    if (I.is_empty())
+                        // No points, must be completely inside the solid.
+                        cell[x][y][z].type = Solid;
+                    else if (I == N[x][y][z])
+                        // Unchanged, must be completely outside the solid.
+                        cell[x][y][z].type = Fluid;
+                    else
+                        // Something else, must be a cut cell.
+                        cell[x][y][z].type = Cut;
+                    N[x][y][z] = I;
+
+                    // Set the index pointer to the parent cell.
+                    cell[x][y][z].parent = Index_3(x, y, z);
+                    if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
+                        std::list<Nef_polyhedron::Point_3> points_3;
+                        Nef_polyhedron::Vertex_const_iterator v;
+
+                        // Calculate the centroid of the cell.
+                        CGAL_forall_vertices(v, I)
+                            points_3.push_back(v->point());
+                        assert(points_3.size() >= 6);
+                        cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+
+                        // Calculate the volume of the cell, using a Triangulated
+                        // volume and summing over tetrahedra.
+                        Triangulation T(points_3.begin(), points_3.end());
+                        assert(T.is_valid());
+                        cell[x][y][z].volume = 0.0;
+                        for (Triangulation::Finite_cells_iterator tcell = T.finite_cells_begin(); tcell != T.finite_cells_end(); ++tcell) {
+                            assert(T.is_cell(tcell));
+                            cell[x][y][z].volume += T.tetrahedron(tcell).volume();
+                        }
+                        assert(cell[x][y][z].volume > 0.0);
+
+                        // Compute the normal vectors for each facet.
+                        // FIXME Use Nef_polyhedron. plane() seems to be provided...?
+                        std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
+                                       Normal_vector());
+
+                        // FIXME convert to iterator over halffacets of Nef_polyhedron I.
+                        for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+                            Face newFace;
+                            Polyhedron::Halfedge_const_handle h1, h2, h3;
+
+                            assert(fi->is_triangle());
+                            // circulate halfedges => vertices
+                            h1 = fi->halfedge();
+                            h2 = h1->next();
+                            h3 = h2->next();
+                            assert(h3->next() == h1);
+
+                            // Compute the squared area of this triangular face.
+                            newFace.area = CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
+                            assert(newFace.area > 0.0);
+
+                            // Store the plane normal of this face.
+                            newFace.normal = fi->plane();
+
+                            // Compute the centroid of this triangular face.
+                            points_3.clear();
+                            points_3.push_back(h1->vertex()->point());
+                            points_3.push_back(h2->vertex()->point());
+                            points_3.push_back(h3->vertex()->point());
+                            newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+
+                            newFace.fluid = false; // FIXME
+
+                            // Store this new face in the list of faces belonging
+                            // to this cell.
+                            cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
+                        }
+                    }
+                }
+            std::cerr << std::endl;
+        }
+    };
+};
+
 int main() {
-    Nef_polyhedron UnitCube;
     const int NX = 5, NY = 5, NZ = 5;
 
     std::cerr << "Making cube" << std::endl;
@@ -244,117 +366,12 @@ int main() {
     assert(UnitCube.number_of_edges() == 12);
     assert(UnitCube.number_of_volumes() == 2);
 
-    // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
-    Nef_polyhedron N[NX][NY][NZ];
     // Create the test cube.
     Nef_polyhedron N1(UnitCube);
-    // Create the array to store the cell (and therefore face) properties at
-    // each point.
-    Cell cell[NX][NY][NZ];
-    std::cerr << "Making grid" << std::endl;
-    // Copy and translate the cube for each point.
-    for (int x = 0; x < NX; x++)
-        for (int y = 0; y < NY; y++)
-            for (int z = 0; z < NZ; z++) {
-                N[x][y][z] = UnitCube;
-                Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
-                N[x][y][z].transform(Aff);
-            }
+    // Create the cutting object.
+    Grid grid(NX, NY, NZ);
 
-    // Put the test cube at an appropriate place
-    Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
-    Aff_transformation Aff2(CGAL::SCALING, 1.5);
-    std::cerr << "Transforming..." << std::endl;
-    N1.transform(Aff1);
-    N1.transform(Aff2);
-
-    // Create a VRML output stream.
-    CGAL::VRML_2_ostream out(std::cout);
-    for (int x = 0; x < NX; x++) {
-        for (int y = 0; y < NY; y++)
-            for (int z = 0; z < NZ; z++) {
-                // Compute the intersection of this part of the grid with the
-                // test cube.
-                Nef_polyhedron I = N[x][y][z] - N1;
-                Polyhedron P;
-                // Convert this new cut Nef_polyhedron I into the Polyhedron P.
-                I.convert_to_polyhedron(P);
-                // Output the Polyhedron in VRML format.
-                out << P;
-
-                // Set the type of the new cell.
-                if (I.is_empty())
-                    // No points, must be completely inside the solid.
-                    cell[x][y][z].type = Solid;
-                else if (I == N[x][y][z])
-                    // Unchanged, must be completely outside the solid.
-                    cell[x][y][z].type = Fluid;
-                else
-                    // Something else, must be a cut cell.
-                    cell[x][y][z].type = Cut;
-
-                // Set the index pointer to the parent cell.
-                cell[x][y][z].parent = Index_3(x, y, z);
-                if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
-                    std::list<Nef_polyhedron::Point_3> points_3;
-                    Nef_polyhedron::Vertex_const_iterator v;
-
-                    // Calculate the centroid of the cell.
-                    CGAL_forall_vertices(v, I)
-                        points_3.push_back(v->point());
-                    assert(points_3.size() >= 6);
-                    cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
-
-                    // Calculate the volume of the cell, using a Triangulated
-                    // volume and summing over tetrahedra.
-                    Triangulation T(points_3.begin(), points_3.end());
-                    assert(T.is_valid());
-                    cell[x][y][z].volume = 0.0;
-                    for (Triangulation::Finite_cells_iterator tcell = T.finite_cells_begin(); tcell != T.finite_cells_end(); ++tcell) {
-                        assert(T.is_cell(tcell));
-                        cell[x][y][z].volume += T.tetrahedron(tcell).volume();
-                    }
-                    assert(cell[x][y][z].volume > 0.0);
-
-                    // Compute the normal vectors for each facet.
-                    std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
-                                   Normal_vector());
-
-                    for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-                        Face newFace;
-                        Polyhedron::Halfedge_const_handle h1, h2, h3;
-
-                        assert(fi->is_triangle());
-                        // circulate halfedges => vertices
-                        h1 = fi->halfedge();
-                        h2 = h1->next();
-                        h3 = h2->next();
-                        assert(h3->next() == h1);
-
-                        // Compute the squared area of this triangular face.
-                        newFace.area = CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
-                        assert(newFace.area > 0.0);
-
-                        // Store the plane normal of this face.
-                        newFace.normal = fi->plane();
-
-                        // Compute the centroid of this triangular face.
-                        points_3.clear();
-                        points_3.push_back(h1->vertex()->point());
-                        points_3.push_back(h2->vertex()->point());
-                        points_3.push_back(h3->vertex()->point());
-                        newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
-
-                        newFace.fluid = false; // FIXME
-
-                        // Store this new face in the list of faces belonging
-                        // to this cell.
-                        cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
-                    }
-                }
-            }
-        std::cerr << std::endl;
-    }
+    grid.cut(N1);
 
     return 0;
 }
