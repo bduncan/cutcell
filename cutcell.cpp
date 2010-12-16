@@ -198,6 +198,20 @@ class compare
 // A description of the properties of one of the faces of a cell.
 class Face {
     public:
+    Face() {};
+    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal(normal), centroid(centroid), area(area), fluid(fluid) {};
+
+    Vector getNormal() { return normal; };
+    Kernel::Point_3 getCentroid() { return centroid; };
+    Kernel::FT getArea() { return area; };
+    bool getFluid() { return fluid; };
+
+    void setNormal(Vector normal_) { normal = normal_; };
+    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; };
+    void setArea(Kernel::FT area_) { area = area_; };
+    void setFluid(bool fluid_) { fluid = fluid_; };
+
+    private:
     Vector normal;
     Kernel::Point_3 centroid;
     Kernel::FT area;
@@ -216,13 +230,32 @@ class Index_3 {
     int i() { return i_; };
     int j() { return j_; };
     int k() { return k_; };
+
     private:
     int i_, j_, k_;
 };
 
+
 // A description of the cell properties of one of the cut cells.
 class Cell {
     public:
+    typedef std::map<Direction, std::vector<Face>, compare> faceMap;
+
+    Cell() {};
+    Type getType() { return type; };
+    Kernel::Point_3 getCentroid() { return centroid; };
+    Kernel::FT getVolume() { return volume; };
+    Index_3 getParent() { return parent; };
+    faceMap getFaces() { return faces; };
+
+    void setType(Type type_) { type = type_; };
+    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; };
+    void setVolume(Kernel::FT volume_) { volume = volume_; };
+    void setParent(Index_3 parent_) { parent = parent_; };
+    void setFaces(faceMap faces_) { faces = faces_; };
+    void addFace(Direction d, Face f) { faces[d].push_back(f); };
+
+    private:
     // Cell properties
     Type type;
     Kernel::Point_3 centroid;
@@ -230,13 +263,14 @@ class Cell {
     Index_3 parent; // I, J, K of parent cell.
 
     // Face properties
-    std::map<Direction, std::vector<Face>, compare> faces;
+    faceMap faces;
 };
 
 class Grid {
     public:
-    std::vector< std::vector< std::vector< Nef_polyhedron > > > N;
-    std::vector< std::vector< std::vector< Cell > > > cell;
+    // Shorthands for 3D vector arrays.
+    typedef std::vector< std::vector< std::vector< Nef_polyhedron > > > V3Nef;
+    typedef std::vector< std::vector< std::vector< Cell > > > V3Cell;
     Grid(int X, int Y, int Z)
     {
         // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
@@ -279,18 +313,18 @@ class Grid {
                     // Set the type of the new cell.
                     if (I.is_empty())
                         // No points, must be completely inside the solid.
-                        cell[x][y][z].type = Solid;
+                        cell[x][y][z].setType(Solid);
                     else if (I == N[x][y][z])
                         // Unchanged, must be completely outside the solid.
-                        cell[x][y][z].type = Fluid;
+                        cell[x][y][z].setType(Fluid);
                     else
                         // Something else, must be a cut cell.
-                        cell[x][y][z].type = Cut;
+                        cell[x][y][z].setType(Cut);
                     N[x][y][z] = I;
 
                     // Set the index pointer to the parent cell.
-                    cell[x][y][z].parent = Index_3(x, y, z);
-                    if (cell[x][y][z].type == Fluid || cell[x][y][z].type == Cut) {
+                    cell[x][y][z].setParent(Index_3(x, y, z));
+                    if (cell[x][y][z].getType() == Fluid || cell[x][y][z].getType() == Cut) {
                         std::list<Nef_polyhedron::Point_3> points_3;
                         Nef_polyhedron::Vertex_const_iterator v;
 
@@ -298,18 +332,19 @@ class Grid {
                         CGAL_forall_vertices(v, I)
                             points_3.push_back(v->point());
                         assert(points_3.size() >= 6);
-                        cell[x][y][z].centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                        cell[x][y][z].setCentroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
 
                         // Calculate the volume of the cell, using a Triangulated
                         // volume and summing over tetrahedra.
                         Triangulation T(points_3.begin(), points_3.end());
                         assert(T.is_valid());
-                        cell[x][y][z].volume = 0.0;
+                        Kernel::FT volume = 0.0;
                         for (Triangulation::Finite_cells_iterator tcell = T.finite_cells_begin(); tcell != T.finite_cells_end(); ++tcell) {
                             assert(T.is_cell(tcell));
-                            cell[x][y][z].volume += T.tetrahedron(tcell).volume();
+                            volume += T.tetrahedron(tcell).volume();
                         }
-                        assert(cell[x][y][z].volume > 0.0);
+                        cell[x][y][z].setVolume(volume);
+                        assert(cell[x][y][z].getVolume() > 0.0); // TODO should also be able to put an upper bound on the volume.
 
                         // Compute the normal vectors for each facet.
                         // FIXME Use Nef_polyhedron. plane() seems to be provided...?
@@ -329,30 +364,35 @@ class Grid {
                             assert(h3->next() == h1);
 
                             // Compute the squared area of this triangular face.
-                            newFace.area = CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point());
-                            assert(newFace.area > 0.0);
+                            newFace.setArea(CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
+                            assert(newFace.getArea() > 0.0); // TODO should also be able to put an upper bound on the area.
 
                             // Store the plane normal of this face.
-                            newFace.normal = fi->plane();
+                            newFace.setNormal(fi->plane());
 
                             // Compute the centroid of this triangular face.
                             points_3.clear();
                             points_3.push_back(h1->vertex()->point());
                             points_3.push_back(h2->vertex()->point());
                             points_3.push_back(h3->vertex()->point());
-                            newFace.centroid = CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>());
+                            newFace.setCentroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
 
-                            newFace.fluid = false; // FIXME
+                            newFace.setFluid(false); // FIXME
 
                             // Store this new face in the list of faces belonging
                             // to this cell.
-                            cell[x][y][z].faces[Direction(fi->plane())].push_back(newFace);
+                            cell[x][y][z].addFace(Direction(fi->plane()), newFace);
                         }
                     }
                 }
             std::cerr << std::endl;
         }
     };
+    V3Nef getGrid() { return N; };
+    V3Cell getCell() { return cell; };
+    private:
+    V3Nef N;
+    V3Cell cell;
 };
 
 int main() {
