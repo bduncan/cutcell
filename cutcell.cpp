@@ -274,7 +274,7 @@ class Grid {
     Grid(int X, int Y, int Z)
     {
         // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
-        N = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z)));
+        N = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z, UnitCube)));
         // Create the array to store the cell (and therefore face) properties at
         // each point.
         cell = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
@@ -282,7 +282,6 @@ class Grid {
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
                 for (int z = 0; z < N[y].size(); z++) {
-                    N[x][y][z] = UnitCube;
                     Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
                     N[x][y][z].transform(Aff);
                 }
