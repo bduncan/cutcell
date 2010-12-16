@@ -289,13 +289,6 @@ class Grid {
     };
     void cut(Nef_polyhedron N1)
     {
-        // Put the test cube at an appropriate place
-        Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
-        Aff_transformation Aff2(CGAL::SCALING, 1.5);
-        std::cerr << "Transforming..." << std::endl;
-        N1.transform(Aff1);
-        N1.transform(Aff2);
-
         // Create a VRML output stream.
         CGAL::VRML_2_ostream out(std::cout);
         for (int x = 0; x < N.size(); x++) {
@@ -408,6 +401,13 @@ int main() {
 
     // Create the test cube.
     Nef_polyhedron N1(UnitCube);
+    // Put the test cube at an appropriate place
+    Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
+    Aff_transformation Aff2(CGAL::SCALING, 1.5);
+    std::cerr << "Transforming..." << std::endl;
+    N1.transform(Aff1);
+    N1.transform(Aff2);
+
     // Create the cutting object.
     Grid grid(NX, NY, NZ);
 
