@@ -288,8 +288,6 @@ class Grid {
     };
     void cut(Nef_polyhedron N1)
     {
-        // Create a VRML output stream.
-        CGAL::VRML_2_ostream out(std::cout);
         for (int x = 0; x < N.size(); x++) {
             for (int y = 0; y < N[x].size(); y++)
                 for (int z = 0; z < N[y].size(); z++) {
@@ -299,8 +297,6 @@ class Grid {
                     Polyhedron P;
                     // Convert this new cut Nef_polyhedron I into the Polyhedron P.
                     I.convert_to_polyhedron(P);
-                    // Output the Polyhedron in VRML format.
-                    out << P;
 
                     // Set the type of the new cell.
                     if (I.is_empty())
@@ -377,15 +373,30 @@ class Grid {
                         }
                     }
                 }
-            std::cerr << std::endl;
         }
     };
+    friend std::ostream& operator<<(std::ostream&, Grid&);
     V3Nef getGrid() { return N; };
     V3Cell getCell() { return cell; };
     private:
     V3Nef N;
     V3Cell cell;
 };
+
+std::ostream& operator<<(std::ostream& out, Grid& g)
+{
+    CGAL::VRML_2_ostream vrml_out(out);
+    for (int x = 0; x < g.N.size(); x++)
+        for (int y = 0; y < g.N[x].size(); y++)
+            for (int z = 0; z < g.N[y].size(); z++) {
+                Polyhedron P;
+                // Convert this new cut Nef_polyhedron I into the Polyhedron P.
+                g.N[x][y][z].convert_to_polyhedron(P);
+                // Output the Polyhedron in VRML format.
+                vrml_out << P;
+            }
+    return out;
+}
 
 int main() {
     const int NX = 5, NY = 5, NZ = 5;
@@ -411,6 +422,8 @@ int main() {
     Grid grid(NX, NY, NZ);
 
     grid.cut(N1);
+
+    std::cout << grid << std::endl;
 
     return 0;
 }
