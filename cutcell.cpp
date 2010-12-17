@@ -389,6 +389,18 @@ class Grid {
                 }
         return out;
     }
+    std::ostream& output_nef(std::ostream& out)
+    {
+        Nef_polyhedron big;
+        for (int x = 0; x < N.size(); x++)
+            for (int y = 0; y < N[x].size(); y++)
+                for (int z = 0; z < N[y].size(); z++) {
+                    // Output the Nef_polyhedron in NEF format.
+                    big += N[x][y][z];
+                }
+        out << big;
+        return out;
+    }
     friend std::ostream& operator<<(std::ostream&, Grid&);
     friend class GridFormat;
     static int getAlloc() { return alloc; }
@@ -406,6 +418,7 @@ class GridFormat
 {
     public:
     static const int OUTPUT_VRML = 1;
+    static const int OUTPUT_NEF = 2;
     GridFormat(int format) : format(format) {};
     friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf)
     {
@@ -422,6 +435,9 @@ std::ostream& operator<<(std::ostream& out, Grid& g)
         default:
         case GridFormat::OUTPUT_VRML:
             return g.output_vrml(out);
+            break;
+        case GridFormat::OUTPUT_NEF:
+            return g.output_nef(out);
     }
 }
 
@@ -450,7 +466,7 @@ int main() {
 
     grid.cut(N1);
 
-    std::cout << GridFormat(GridFormat::OUTPUT_VRML) << grid << std::endl;
+    std::cout << GridFormat(GridFormat::OUTPUT_NEF) << grid << std::endl;
 
     return 0;
 }
