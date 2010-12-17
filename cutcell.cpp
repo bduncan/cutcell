@@ -375,27 +375,54 @@ class Grid {
                 }
         }
     };
+    std::ostream& output_vrml(std::ostream& out)
+    {
+        CGAL::VRML_2_ostream vrml_out(out);
+        for (int x = 0; x < N.size(); x++)
+            for (int y = 0; y < N[x].size(); y++)
+                for (int z = 0; z < N[y].size(); z++) {
+                    Polyhedron P;
+                    // Convert this new cut Nef_polyhedron into the Polyhedron P.
+                    N[x][y][z].convert_to_polyhedron(P);
+                    // Output the Polyhedron in VRML format.
+                    vrml_out << P;
+                }
+        return out;
+    }
     friend std::ostream& operator<<(std::ostream&, Grid&);
+    friend class GridFormat;
+    static int getAlloc() { return alloc; }
+
     V3Nef getGrid() { return N; };
     V3Cell getCell() { return cell; };
     private:
     V3Nef N;
     V3Cell cell;
+    static const int alloc;
+};
+const int Grid::alloc = std::ios_base::xalloc();
+
+class GridFormat
+{
+    public:
+    static const int OUTPUT_VRML = 1;
+    GridFormat(int format) : format(format) {};
+    friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf)
+    {
+        os.iword(Grid::getAlloc()) = gf.format;
+        return os;
+    };
+    private:
+    int format;
 };
 
 std::ostream& operator<<(std::ostream& out, Grid& g)
 {
-    CGAL::VRML_2_ostream vrml_out(out);
-    for (int x = 0; x < g.N.size(); x++)
-        for (int y = 0; y < g.N[x].size(); y++)
-            for (int z = 0; z < g.N[y].size(); z++) {
-                Polyhedron P;
-                // Convert this new cut Nef_polyhedron I into the Polyhedron P.
-                g.N[x][y][z].convert_to_polyhedron(P);
-                // Output the Polyhedron in VRML format.
-                vrml_out << P;
-            }
-    return out;
+    switch (out.iword(g.getAlloc())) {
+        default:
+        case GridFormat::OUTPUT_VRML:
+            return g.output_vrml(out);
+    }
 }
 
 int main() {
@@ -423,7 +450,7 @@ int main() {
 
     grid.cut(N1);
 
-    std::cout << grid << std::endl;
+    std::cout << GridFormat(GridFormat::OUTPUT_VRML) << grid << std::endl;
 
     return 0;
 }
