@@ -169,7 +169,6 @@ sfaces     16\n\
 15 { 7, 42 , , , 1 } 1\n\
 /* end Selective Nef complex */\n\
 ";
-Nef_polyhedron UnitCube;
 
 // A function to compute the plane normal of a Facet
 // From CGAL-3.7/examples/Polyhedron/polyhedron_prog_normals.cpp
@@ -273,11 +272,22 @@ class Grid {
     typedef std::vector< std::vector< std::vector< Cell > > > V3Cell;
     Grid(int X, int Y, int Z)
     {
+        // Create the Unit Cube from the global string definition.
+        Nef_polyhedron UnitCube;
+        std::istringstream in(cube);
+        in >> UnitCube;
+        assert(UnitCube.number_of_vertices() == 8);
+        assert(UnitCube.number_of_facets() == 6);
+        assert(UnitCube.number_of_edges() == 12);
+        assert(UnitCube.number_of_volumes() == 2);
+
         // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
         N = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z, UnitCube)));
+
         // Create the array to store the cell (and therefore face) properties at
         // each point.
         cell = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
+
         // Copy and translate the cube for each point.
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
@@ -443,21 +453,18 @@ std::ostream& operator<<(std::ostream& out, Grid& g)
 
 int main() {
     const int NX = 5, NY = 5, NZ = 5;
+    Nef_polyhedron N1;
 
-    std::cerr << "Making cube" << std::endl;
     std::istringstream in(cube); // Load the definition of a unit cube from string
-    in >> UnitCube;
-    assert(UnitCube.number_of_vertices() == 8);
-    assert(UnitCube.number_of_facets() == 6);
-    assert(UnitCube.number_of_edges() == 12);
-    assert(UnitCube.number_of_volumes() == 2);
+    in >> N1;                    // into the test cube
+    assert(N1.number_of_vertices() == 8);
+    assert(N1.number_of_facets() == 6);
+    assert(N1.number_of_edges() == 12);
+    assert(N1.number_of_volumes() == 2);
 
-    // Create the test cube.
-    Nef_polyhedron N1(UnitCube);
     // Put the test cube at an appropriate place
     Aff_transformation Aff1(CGAL::TRANSLATION, Vector(0.5, 0.5, 0.5));
     Aff_transformation Aff2(CGAL::SCALING, 1.5);
-    std::cerr << "Transforming..." << std::endl;
     N1.transform(Aff1);
     N1.transform(Aff2);
 
