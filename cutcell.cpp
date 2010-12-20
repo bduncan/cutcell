@@ -291,7 +291,7 @@ class Grid {
         // Copy and translate the cube for each point.
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[y].size(); z++) {
+                for (int z = 0; z < N[x][y].size(); z++) {
                     Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
                     N[x][y][z].transform(Aff);
                 }
@@ -300,7 +300,7 @@ class Grid {
     {
         for (int x = 0; x < N.size(); x++) {
             for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[y].size(); z++) {
+                for (int z = 0; z < N[x][y].size(); z++) {
                     // Compute the intersection of this part of the grid with the
                     // test cube.
                     Nef_polyhedron I = N[x][y][z] - N1;
@@ -390,7 +390,7 @@ class Grid {
         CGAL::VRML_2_ostream vrml_out(out);
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[y].size(); z++) {
+                for (int z = 0; z < N[x][y].size(); z++) {
                     Polyhedron P;
                     // Convert this new cut Nef_polyhedron into the Polyhedron P.
                     N[x][y][z].convert_to_polyhedron(P);
@@ -404,7 +404,7 @@ class Grid {
         Nef_polyhedron big;
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[y].size(); z++) {
+                for (int z = 0; z < N[x][y].size(); z++) {
                     // Output the Nef_polyhedron in NEF format.
                     big += N[x][y][z];
                 }
