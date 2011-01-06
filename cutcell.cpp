@@ -426,6 +426,13 @@ const int Grid::alloc = std::ios_base::xalloc();
 
 class GridFormat
 {
+    // This is a stream modifier for Grid objects. The stream stores the state
+    // in a table which is indexed by the Grid::alloc variable above. This
+    // index is allocated at compile time. The state is then retrieved in the
+    // operator<< of the Grid class, which then calls the appropriate function
+    // on the Grid object.
+    // To add a new output format, add an integer constant here and add a case
+    // to the switch statement in operator<<, below.
     public:
     static const int OUTPUT_VRML = 1;
     static const int OUTPUT_NEF = 2;
@@ -441,6 +448,8 @@ class GridFormat
 
 std::ostream& operator<<(std::ostream& out, Grid& g)
 {
+    // Call the appropriate output function on the Grid object depending on
+    // the stream state.
     switch (out.iword(g.getAlloc())) {
         default:
         case GridFormat::OUTPUT_VRML:
@@ -471,8 +480,10 @@ int main() {
     // Create the cutting object.
     Grid grid(NX, NY, NZ);
 
+    // Cut the grid to the test cube.
     grid.cut(N1);
 
+    // Output the grid in NEF format.
     std::cout << GridFormat(GridFormat::OUTPUT_NEF) << grid << std::endl;
 
     return 0;
