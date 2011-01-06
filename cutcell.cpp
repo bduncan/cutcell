@@ -30,6 +30,7 @@
 #include <list>
 #include <fstream>
 #include <iostream>
+#include <cgnslib.h>
 
 // This is a filtered, Cartesian, quotient kernel.
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
@@ -411,6 +412,19 @@ class Grid {
         out << big;
         return out;
     }
+    std::ostream& output_cgns(std::ostream& out)
+    {
+        int index_file = 0;
+        const std::string NAME("/tmp/temp.cgns");
+
+        if (cg_open(NAME.c_str(), CG_MODE_WRITE, &index_file) != CG_OK)
+            abort();
+        if (cg_close(index_file) != CG_OK)
+            abort();
+        std::ifstream in(NAME.c_str());
+        out << in.rdbuf();
+        return out;
+    }
     friend std::ostream& operator<<(std::ostream&, Grid&);
     friend class GridFormat;
     static int getAlloc() { return alloc; }
@@ -436,6 +450,7 @@ class GridFormat
     public:
     static const int OUTPUT_VRML = 1;
     static const int OUTPUT_NEF = 2;
+    static const int OUTPUT_CGNS = 3;
     GridFormat(int format) : format(format) {};
     friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf)
     {
@@ -457,6 +472,9 @@ std::ostream& operator<<(std::ostream& out, Grid& g)
             break;
         case GridFormat::OUTPUT_NEF:
             return g.output_nef(out);
+            break;
+        case GridFormat::OUTPUT_CGNS:
+            return g.output_cgns(out);
     }
 }
 
@@ -484,7 +502,7 @@ int main() {
     grid.cut(N1);
 
     // Output the grid in NEF format.
-    std::cout << GridFormat(GridFormat::OUTPUT_NEF) << grid << std::endl;
+    std::cout << GridFormat(GridFormat::OUTPUT_CGNS) << grid << std::endl;
 
     return 0;
 }

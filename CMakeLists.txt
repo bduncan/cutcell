@@ -50,13 +50,43 @@ endmacro()
 if ( CGAL_FOUND )
 
   include( ${CGAL_USE_FILE} )
-
   include( CGAL_CreateSingleSourceCGALProgram )
+
+  macro(create_single_source_cgal_program_with_cgns first )
+
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${first})
+
+      set( all ${CMAKE_CURRENT_SOURCE_DIR}/${first} )
+
+      foreach( i ${ARGN} )
+        set( all ${all} ${CMAKE_CURRENT_SOURCE_DIR}/${i} )
+      endforeach()
+
+      get_filename_component(exe_name ${first} NAME_WE)
+
+      add_executable(${exe_name} ${all})
+
+      add_to_cached_list( CGAL_EXECUTABLE_TARGETS ${exe_name} )
+
+      # Link the executable to CGAL and third-party libraries
+      if ( CGAL_AUTO_LINK_ENABLED )
+
+        target_link_libraries(${exe_name} ${CGAL_3RD_PARTY_LIBRARIES} cgns )
+
+      else()
+
+        target_link_libraries(${exe_name} ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} cgns )
+
+      endif()
+
+    endif()
+
+  endmacro()
 
   create_single_source_cgal_program( "UnionTest.cpp" )
   create_single_source_cgal_program( "IntersectionTest.cpp" )
   create_single_source_cgal_program( "make_cube_3.cpp" )
-  create_single_source_cgal_program( "cutcell.cpp" )
+  create_single_source_cgal_program_with_cgns( "cutcell.cpp" )
 
 else()
 
