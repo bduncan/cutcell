@@ -415,14 +415,16 @@ class Grid {
     std::ostream& output_cgns(std::ostream& out)
     {
         int index_file = 0;
-        const std::string NAME("/tmp/temp.cgns");
+        const char* const NAME = "/tmp/temp.cgns";
 
-        if (cg_open(NAME.c_str(), CG_MODE_WRITE, &index_file) != CG_OK)
+        if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK)
             abort();
         if (cg_close(index_file) != CG_OK)
             abort();
-        std::ifstream in(NAME.c_str());
+        std::ifstream in(NAME);
         out << in.rdbuf();
+        in.close();
+        std::remove(NAME);
         return out;
     }
     friend std::ostream& operator<<(std::ostream&, Grid&);
