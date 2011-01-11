@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cgnslib.h>
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/Polyhedron_3.h>
@@ -33,7 +34,6 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#include <cgnslib.h>
 
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
@@ -184,8 +184,8 @@ sfaces     16\n\
 // From CGAL-3.7/examples/Polyhedron/polyhedron_prog_normals.cpp
 struct Normal_vector {
     template <class Facet>
-    typename Facet::Plane_3 operator()(Facet& f) {
-        typename Facet::Halfedge_handle h = f.halfedge();
+    typename Facet::Plane_3 operator()(Facet const& f) {
+        typename Facet::Halfedge_const_handle h = f.halfedge();
         // Facet::Plane_3 is the normal vector type. We assume the
         // CGAL Kernel here and use its global functions.
         return typename Facet::Plane_3(CGAL::cross_product(
@@ -197,7 +197,7 @@ struct Normal_vector {
 // A function to compare two Directions, allowing them to be stored in a map.
 class compare {
     public:
-    bool operator()(const Direction x, const Direction y) {
+    bool operator()(Direction const& x, Direction const& y) {
         return x != y;
     }
 };
@@ -208,10 +208,10 @@ class Face {
     Face() {}
     Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal(normal), centroid(centroid), area(area), fluid(fluid) {}
 
-    Vector getNormal() { return normal; }
-    Kernel::Point_3 getCentroid() { return centroid; }
-    Kernel::FT getArea() { return area; }
-    bool getFluid() { return fluid; }
+    Vector const& getNormal() const { return normal; }
+    Kernel::Point_3 const& getCentroid() const { return centroid; }
+    Kernel::FT const& getArea() const { return area; }
+    bool getFluid() const { return fluid; }
 
     void setNormal(Vector normal_) { normal = normal_; }
     void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
@@ -234,9 +234,9 @@ class Index_3 {
     public:
     Index_3() : i_(0), j_(0), k_(0) {}
     Index_3(int i, int j, int k) : i_(i), j_(j), k_(k) {}
-    int i() { return i_; }
-    int j() { return j_; }
-    int k() { return k_; }
+    int i() const { return i_; }
+    int j() const { return j_; }
+    int k() const { return k_; }
 
     private:
     int i_, j_, k_;
@@ -249,11 +249,11 @@ class Cell {
     typedef std::map<Direction, std::vector<Face>, compare> faceMap;
 
     Cell() {}
-    Type getType() { return type; }
-    Kernel::Point_3 getCentroid() { return centroid; }
-    Kernel::FT getVolume() { return volume; }
-    Index_3 getParent() { return parent; }
-    faceMap getFaces() { return faces; }
+    Type const& getType() const { return type; }
+    Kernel::Point_3 const& getCentroid() const { return centroid; }
+    Kernel::FT const& getVolume() const { return volume; }
+    Index_3 const& getParent() const { return parent; }
+    faceMap const& getFaces() const { return faces; }
 
     void setType(Type type_) { type = type_; }
     void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
@@ -391,7 +391,7 @@ class Grid {
                 }
         }
     };
-    std::ostream& output_vrml(std::ostream& out) {
+    std::ostream& output_vrml(std::ostream& out) const {
         CGAL::VRML_2_ostream vrml_out(out);
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
@@ -404,7 +404,7 @@ class Grid {
                 }
         return out;
     }
-    std::ostream& output_nef(std::ostream& out) {
+    std::ostream& output_nef(std::ostream& out) const {
         Nef_polyhedron big;
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
@@ -415,7 +415,7 @@ class Grid {
         out << big;
         return out;
     }
-    std::ostream& output_cgns(std::ostream& out) {
+    std::ostream& output_cgns(std::ostream& out) const {
         int index_file = 0;
         const char* const NAME = "/tmp/temp.cgns";
 
@@ -429,12 +429,11 @@ class Grid {
         std::remove(NAME);
         return out;
     }
-    friend std::ostream& operator<<(std::ostream&, Grid&);
     friend class GridFormat;
     static int getAlloc() { return alloc; }
 
-    V3Nef getGrid() { return N; }
-    V3Cell getCell() { return cell; }
+    V3Nef const& getGrid() const { return N; }
+    V3Cell const& getCell() const { return cell; }
     private:
     V3Nef N;
     V3Cell cell;
@@ -455,8 +454,8 @@ class GridFormat {
     static const int OUTPUT_VRML = 1;
     static const int OUTPUT_NEF = 2;
     static const int OUTPUT_CGNS = 3;
-    GridFormat(int format) : format(format) {}
-    friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf) {
+    explicit GridFormat(int format) : format(format) {}
+    friend std::ostream & operator<<(std::ostream& os, GridFormat const& gf) {
         os.iword(Grid::getAlloc()) = gf.format;
         return os;
     }
