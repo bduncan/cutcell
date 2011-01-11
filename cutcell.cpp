@@ -30,7 +30,16 @@
 #include <list>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <vector>
+#include <algorithm>
 #include <cgnslib.h>
+
+// A macro to disallow the copy constructor and operator= functions
+// This should be used in the private: declarations for a class
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+  TypeName(const TypeName&);               \
+  void operator=(const TypeName&)
 
 // This is a filtered, Cartesian, quotient kernel.
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
@@ -175,7 +184,7 @@ sfaces     16\n\
 // From CGAL-3.7/examples/Polyhedron/polyhedron_prog_normals.cpp
 struct Normal_vector {
     template <class Facet>
-    typename Facet::Plane_3 operator()( Facet& f) {
+    typename Facet::Plane_3 operator()(Facet& f) {
         typename Facet::Halfedge_handle h = f.halfedge();
         // Facet::Plane_3 is the normal vector type. We assume the
         // CGAL Kernel here and use its global functions.
@@ -186,11 +195,9 @@ struct Normal_vector {
 };
 
 // A function to compare two Directions, allowing them to be stored in a map.
-class compare
-{
+class compare {
     public:
-    bool operator()(const Direction x, const Direction y)
-    {
+    bool operator()(const Direction x, const Direction y) {
         return x != y;
     }
 };
@@ -198,18 +205,18 @@ class compare
 // A description of the properties of one of the faces of a cell.
 class Face {
     public:
-    Face() {};
-    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal(normal), centroid(centroid), area(area), fluid(fluid) {};
+    Face() {}
+    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal(normal), centroid(centroid), area(area), fluid(fluid) {}
 
-    Vector getNormal() { return normal; };
-    Kernel::Point_3 getCentroid() { return centroid; };
-    Kernel::FT getArea() { return area; };
-    bool getFluid() { return fluid; };
+    Vector getNormal() { return normal; }
+    Kernel::Point_3 getCentroid() { return centroid; }
+    Kernel::FT getArea() { return area; }
+    bool getFluid() { return fluid; }
 
-    void setNormal(Vector normal_) { normal = normal_; };
-    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; };
-    void setArea(Kernel::FT area_) { area = area_; };
-    void setFluid(bool fluid_) { fluid = fluid_; };
+    void setNormal(Vector normal_) { normal = normal_; }
+    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
+    void setArea(Kernel::FT area_) { area = area_; }
+    void setFluid(bool fluid_) { fluid = fluid_; }
 
     private:
     Vector normal;
@@ -225,11 +232,11 @@ enum Type { Solid, Fluid, Cut };
 // The ijk index of a cell in the Cartesian space.
 class Index_3 {
     public:
-    Index_3() : i_(0), j_(0), k_(0) {};
-    Index_3(int i, int j, int k) : i_(i), j_(j), k_(k) {};
-    int i() { return i_; };
-    int j() { return j_; };
-    int k() { return k_; };
+    Index_3() : i_(0), j_(0), k_(0) {}
+    Index_3(int i, int j, int k) : i_(i), j_(j), k_(k) {}
+    int i() { return i_; }
+    int j() { return j_; }
+    int k() { return k_; }
 
     private:
     int i_, j_, k_;
@@ -241,19 +248,19 @@ class Cell {
     public:
     typedef std::map<Direction, std::vector<Face>, compare> faceMap;
 
-    Cell() {};
-    Type getType() { return type; };
-    Kernel::Point_3 getCentroid() { return centroid; };
-    Kernel::FT getVolume() { return volume; };
-    Index_3 getParent() { return parent; };
-    faceMap getFaces() { return faces; };
+    Cell() {}
+    Type getType() { return type; }
+    Kernel::Point_3 getCentroid() { return centroid; }
+    Kernel::FT getVolume() { return volume; }
+    Index_3 getParent() { return parent; }
+    faceMap getFaces() { return faces; }
 
-    void setType(Type type_) { type = type_; };
-    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; };
-    void setVolume(Kernel::FT volume_) { volume = volume_; };
-    void setParent(Index_3 parent_) { parent = parent_; };
-    void setFaces(faceMap faces_) { faces = faces_; };
-    void addFace(Direction d, Face f) { faces[d].push_back(f); };
+    void setType(Type type_) { type = type_; }
+    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
+    void setVolume(Kernel::FT volume_) { volume = volume_; }
+    void setParent(Index_3 parent_) { parent = parent_; }
+    void setFaces(faceMap faces_) { faces = faces_; }
+    void addFace(Direction d, Face f) { faces[d].push_back(f); }
 
     private:
     // Cell properties
@@ -271,8 +278,7 @@ class Grid {
     // Shorthands for 3D vector arrays.
     typedef std::vector< std::vector< std::vector< Nef_polyhedron > > > V3Nef;
     typedef std::vector< std::vector< std::vector< Cell > > > V3Cell;
-    Grid(int X, int Y, int Z)
-    {
+    Grid(int X, int Y, int Z) {
         // Create the Unit Cube from the global string definition.
         Nef_polyhedron UnitCube;
         std::istringstream in(cube);
@@ -297,8 +303,7 @@ class Grid {
                     N[x][y][z].transform(Aff);
                 }
     };
-    void cut(Nef_polyhedron N1)
-    {
+    void cut(Nef_polyhedron N1) {
         for (int x = 0; x < N.size(); x++) {
             for (int y = 0; y < N[x].size(); y++)
                 for (int z = 0; z < N[x][y].size(); z++) {
@@ -386,8 +391,7 @@ class Grid {
                 }
         }
     };
-    std::ostream& output_vrml(std::ostream& out)
-    {
+    std::ostream& output_vrml(std::ostream& out) {
         CGAL::VRML_2_ostream vrml_out(out);
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
@@ -400,8 +404,7 @@ class Grid {
                 }
         return out;
     }
-    std::ostream& output_nef(std::ostream& out)
-    {
+    std::ostream& output_nef(std::ostream& out) {
         Nef_polyhedron big;
         for (int x = 0; x < N.size(); x++)
             for (int y = 0; y < N[x].size(); y++)
@@ -412,8 +415,7 @@ class Grid {
         out << big;
         return out;
     }
-    std::ostream& output_cgns(std::ostream& out)
-    {
+    std::ostream& output_cgns(std::ostream& out) {
         int index_file = 0;
         const char* const NAME = "/tmp/temp.cgns";
 
@@ -431,17 +433,17 @@ class Grid {
     friend class GridFormat;
     static int getAlloc() { return alloc; }
 
-    V3Nef getGrid() { return N; };
-    V3Cell getCell() { return cell; };
+    V3Nef getGrid() { return N; }
+    V3Cell getCell() { return cell; }
     private:
     V3Nef N;
     V3Cell cell;
     static const int alloc;
+    DISALLOW_COPY_AND_ASSIGN(Grid);
 };
 const int Grid::alloc = std::ios_base::xalloc();
 
-class GridFormat
-{
+class GridFormat {
     // This is a stream modifier for Grid objects. The stream stores the state
     // in a table which is indexed by the Grid::alloc variable above. This
     // index is allocated at compile time. The state is then retrieved in the
@@ -453,18 +455,17 @@ class GridFormat
     static const int OUTPUT_VRML = 1;
     static const int OUTPUT_NEF = 2;
     static const int OUTPUT_CGNS = 3;
-    GridFormat(int format) : format(format) {};
-    friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf)
-    {
+    GridFormat(int format) : format(format) {}
+    friend std::ostream & operator<<(std::ostream& os, const GridFormat & gf) {
         os.iword(Grid::getAlloc()) = gf.format;
         return os;
-    };
+    }
     private:
     int format;
+    DISALLOW_COPY_AND_ASSIGN(GridFormat);
 };
 
-std::ostream& operator<<(std::ostream& out, Grid& g)
-{
+std::ostream& operator<<(std::ostream& out, Grid& g) {
     // Call the appropriate output function on the Grid object depending on
     // the stream state.
     switch (out.iword(g.getAlloc())) {
