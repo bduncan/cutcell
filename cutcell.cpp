@@ -206,23 +206,23 @@ class compare {
 class Face {
     public:
     Face() {}
-    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal(normal), centroid(centroid), area(area), fluid(fluid) {}
+    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal_(normal), centroid_(centroid), area_(area), fluid_(fluid) {}
 
-    Vector const& getNormal() const { return normal; }
-    Kernel::Point_3 const& getCentroid() const { return centroid; }
-    Kernel::FT const& getArea() const { return area; }
-    bool getFluid() const { return fluid; }
+    Vector const& normal() const { return normal_; }
+    Kernel::Point_3 const& centroid() const { return centroid_; }
+    Kernel::FT const& area() const { return area_; }
+    bool fluid() const { return fluid_; }
 
-    void setNormal(Vector normal_) { normal = normal_; }
-    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
-    void setArea(Kernel::FT area_) { area = area_; }
-    void setFluid(bool fluid_) { fluid = fluid_; }
+    void normal(Vector const& normal) { normal_ = normal; }
+    void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
+    void area(Kernel::FT const& area) { area_ = area; }
+    void fluid(bool fluid) { fluid_ = fluid; }
 
     private:
-    Vector normal;
-    Kernel::Point_3 centroid;
-    Kernel::FT area;
-    bool fluid; // whether our neighbour is a fluid cell.
+    Vector normal_;
+    Kernel::Point_3 centroid_;
+    Kernel::FT area_;
+    bool fluid_; // whether our neighbour is a fluid cell.
 };
 
 // Whether the cell is a simple solid or fluid cell, or whether it has been cut
@@ -249,31 +249,33 @@ class Cell {
     typedef std::map<Direction, std::vector<Face>, compare> faceMap;
 
     Cell() {}
-    Type const& getType() const { return type; }
-    Kernel::Point_3 const& getCentroid() const { return centroid; }
-    Kernel::FT const& getVolume() const { return volume; }
-    Index_3 const& getParent() const { return parent; }
-    faceMap const& getFaces() const { return faces; }
+    Type const& type() const { return type_; }
+    Kernel::Point_3 const& centroid() const { return centroid_; }
+    Kernel::FT const& volume() const { return volume_; }
+    Index_3 const& parent() const { return parent_; }
+    faceMap const& faces() const { return faces_; }
 
-    void setType(Type type_) { type = type_; }
-    void setCentroid(Kernel::Point_3 centroid_) { centroid = centroid_; }
-    void setVolume(Kernel::FT volume_) { volume = volume_; }
-    void setParent(Index_3 parent_) { parent = parent_; }
-    void setFaces(faceMap faces_) { faces = faces_; }
-    void addFace(Direction d, Face f) { faces[d].push_back(f); }
+    void type(Type type) { type_ = type; }
+    void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
+    void volume(Kernel::FT const& volume) { volume_ = volume; }
+    void parent(Index_3 const& parent) { parent_ = parent; }
+    void faces(faceMap const& faces) { faces_ = faces; }
+    void addFace(Direction const& d, Face const& f) { faces_[d].push_back(f); }
 
     private:
     // Cell properties
-    Type type;
-    Kernel::Point_3 centroid;
-    Kernel::FT volume;
-    Index_3 parent; // I, J, K of parent cell.
+    Type type_;
+    Kernel::Point_3 centroid_;
+    Kernel::FT volume_;
+    Index_3 parent_; // I, J, K of parent cell.
 
     // Face properties
-    faceMap faces;
+    faceMap faces_;
 };
 
 class Grid {
+    friend std::ostream& operator<<(std::ostream&, Grid &);
+    friend class GridFormat;
     public:
     // Shorthands for 3D vector arrays.
     typedef std::vector< std::vector< std::vector< Nef_polyhedron > > > V3Nef;
@@ -289,27 +291,27 @@ class Grid {
         assert(UnitCube.number_of_volumes() == 2);
 
         // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
-        N = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z, UnitCube)));
+        N_ = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z, UnitCube)));
 
         // Create the array to store the cell (and therefore face) properties at
         // each point.
-        cell = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
+        cell_ = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
 
         // Copy and translate the cube for each point.
-        for (int x = 0; x < N.size(); x++)
-            for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[x][y].size(); z++) {
+        for (int x = 0; x < N_.size(); ++x)
+            for (int y = 0; y < N_[x].size(); ++y)
+                for (int z = 0; z < N_[x][y].size(); ++z) {
                     Aff_transformation Aff(CGAL::TRANSLATION, Vector(x, y, z));
-                    N[x][y][z].transform(Aff);
+                    N_[x][y][z].transform(Aff);
                 }
     };
-    void cut(Nef_polyhedron N1) {
-        for (int x = 0; x < N.size(); x++) {
-            for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[x][y].size(); z++) {
+    void cut(Nef_polyhedron const& N1) {
+        for (int x = 0; x < N_.size(); ++x) {
+            for (int y = 0; y < N_[x].size(); ++y)
+                for (int z = 0; z < N_[x][y].size(); ++z) {
                     // Compute the intersection of this part of the grid with the
                     // test cube.
-                    Nef_polyhedron I = N[x][y][z] - N1;
+                    Nef_polyhedron I = N_[x][y][z] - N1;
                     Polyhedron P;
                     // Convert this new cut Nef_polyhedron I into the Polyhedron P.
                     I.convert_to_polyhedron(P);
@@ -317,18 +319,18 @@ class Grid {
                     // Set the type of the new cell.
                     if (I.is_empty())
                         // No points, must be completely inside the solid.
-                        cell[x][y][z].setType(Solid);
-                    else if (I == N[x][y][z])
+                        cell_[x][y][z].type(Solid);
+                    else if (I == N_[x][y][z])
                         // Unchanged, must be completely outside the solid.
-                        cell[x][y][z].setType(Fluid);
+                        cell_[x][y][z].type(Fluid);
                     else
                         // Something else, must be a cut cell.
-                        cell[x][y][z].setType(Cut);
-                    N[x][y][z] = I;
+                        cell_[x][y][z].type(Cut);
+                    N_[x][y][z] = I;
 
                     // Set the index pointer to the parent cell.
-                    cell[x][y][z].setParent(Index_3(x, y, z));
-                    if (cell[x][y][z].getType() == Fluid || cell[x][y][z].getType() == Cut) {
+                    cell_[x][y][z].parent(Index_3(x, y, z));
+                    if (cell_[x][y][z].type() == Fluid || cell_[x][y][z].type() == Cut) {
                         std::list<Nef_polyhedron::Point_3> points_3;
                         Nef_polyhedron::Vertex_const_iterator v;
 
@@ -336,7 +338,7 @@ class Grid {
                         CGAL_forall_vertices(v, I)
                             points_3.push_back(v->point());
                         assert(points_3.size() >= 6);
-                        cell[x][y][z].setCentroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
+                        cell_[x][y][z].centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
 
                         // Calculate the volume of the cell, using a Triangulated
                         // volume and summing over tetrahedra.
@@ -347,8 +349,8 @@ class Grid {
                             assert(T.is_cell(tcell));
                             volume += T.tetrahedron(tcell).volume();
                         }
-                        cell[x][y][z].setVolume(volume);
-                        assert(cell[x][y][z].getVolume() > 0.0); // TODO should also be able to put an upper bound on the volume.
+                        cell_[x][y][z].volume(volume);
+                        assert(cell_[x][y][z].volume() > 0.0); // TODO should also be able to put an upper bound on the volume.
 
                         // Compute the normal vectors for each facet.
                         // FIXME Use Nef_polyhedron. plane() seems to be provided...?
@@ -368,37 +370,44 @@ class Grid {
                             assert(h3->next() == h1);
 
                             // Compute the squared area of this triangular face.
-                            newFace.setArea(CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
-                            assert(newFace.getArea() > 0.0); // TODO should also be able to put an upper bound on the area.
+                            newFace.area(CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
+                            assert(newFace.area() > 0.0); // TODO should also be able to put an upper bound on the area.
 
                             // Store the plane normal of this face.
-                            newFace.setNormal(fi->plane());
+                            newFace.normal(fi->plane());
 
                             // Compute the centroid of this triangular face.
                             points_3.clear();
                             points_3.push_back(h1->vertex()->point());
                             points_3.push_back(h2->vertex()->point());
                             points_3.push_back(h3->vertex()->point());
-                            newFace.setCentroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
+                            newFace.centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
 
-                            newFace.setFluid(false); // FIXME
+                            newFace.fluid(false); // FIXME
 
                             // Store this new face in the list of faces belonging
                             // to this cell.
-                            cell[x][y][z].addFace(Direction(fi->plane()), newFace);
+                            cell_[x][y][z].addFace(Direction(fi->plane()), newFace);
                         }
                     }
                 }
         }
     };
-    std::ostream& output_vrml(std::ostream& out) const {
+
+    V3Nef const& grid() const { return N_; }
+    V3Cell const& cell() const { return cell_; }
+
+    private:
+    // TODO: This function should be const, but
+    // Nef_polyhedron::convert_to_polyhedron is not const, so it can't be.
+    std::ostream& output_vrml(std::ostream& out) {
         CGAL::VRML_2_ostream vrml_out(out);
-        for (int x = 0; x < N.size(); x++)
-            for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[x][y].size(); z++) {
+        for (int x = 0; x < N_.size(); ++x)
+            for (int y = 0; y < N_[x].size(); ++y)
+                for (int z = 0; z < N_[x][y].size(); ++z) {
                     Polyhedron P;
                     // Convert this new cut Nef_polyhedron into the Polyhedron P.
-                    N[x][y][z].convert_to_polyhedron(P);
+                    N_[x][y][z].convert_to_polyhedron(P);
                     // Output the Polyhedron in VRML format.
                     vrml_out << P;
                 }
@@ -406,18 +415,18 @@ class Grid {
     }
     std::ostream& output_nef(std::ostream& out) const {
         Nef_polyhedron big;
-        for (int x = 0; x < N.size(); x++)
-            for (int y = 0; y < N[x].size(); y++)
-                for (int z = 0; z < N[x][y].size(); z++) {
+        for (int x = 0; x < N_.size(); ++x)
+            for (int y = 0; y < N_[x].size(); ++y)
+                for (int z = 0; z < N_[x][y].size(); ++z) {
                     // Output the Nef_polyhedron in NEF format.
-                    big += N[x][y][z];
+                    big += N_[x][y][z];
                 }
         out << big;
         return out;
     }
     std::ostream& output_cgns(std::ostream& out) const {
         int index_file = 0;
-        const char* const NAME = "/tmp/temp.cgns";
+        char const * const NAME = "/tmp/temp.cgns";
 
         if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK)
             abort();
@@ -429,18 +438,13 @@ class Grid {
         std::remove(NAME);
         return out;
     }
-    friend class GridFormat;
-    static int getAlloc() { return alloc; }
-
-    V3Nef const& getGrid() const { return N; }
-    V3Cell const& getCell() const { return cell; }
-    private:
-    V3Nef N;
-    V3Cell cell;
-    static const int alloc;
+    static int alloc() { return alloc_; }
+    V3Nef N_;
+    V3Cell cell_;
+    static const int alloc_;
     DISALLOW_COPY_AND_ASSIGN(Grid);
 };
-const int Grid::alloc = std::ios_base::xalloc();
+const int Grid::alloc_ = std::ios_base::xalloc();
 
 class GridFormat {
     // This is a stream modifier for Grid objects. The stream stores the state
@@ -456,18 +460,22 @@ class GridFormat {
     static const int OUTPUT_CGNS = 3;
     explicit GridFormat(int format) : format(format) {}
     friend std::ostream & operator<<(std::ostream& os, GridFormat const& gf) {
-        os.iword(Grid::getAlloc()) = gf.format;
+        os.iword(gridAlloc()) = gf.format;
         return os;
     }
     private:
     int format;
+    // operator<< needs Grid::alloc, but it can't get it as a friend. Pass it on.
+    static int gridAlloc() { return Grid::alloc(); }
     DISALLOW_COPY_AND_ASSIGN(GridFormat);
 };
 
-std::ostream& operator<<(std::ostream& out, Grid& g) {
+// TODO: This function should take a Grid const&, but output_vrml can't be
+// const yet (see above), so it can't.
+std::ostream& operator<<(std::ostream& out, Grid & g) {
     // Call the appropriate output function on the Grid object depending on
     // the stream state.
-    switch (out.iword(g.getAlloc())) {
+    switch (out.iword(g.alloc())) {
         default:
         case GridFormat::OUTPUT_VRML:
             return g.output_vrml(out);
