@@ -414,13 +414,36 @@ class Grid {
     }
     std::ostream& output_cgns(std::ostream& out)
     {
-        int index_file = 0;
+        int index_file = 0, index_base = 0, index_zone = 0;
         const char* const NAME = "/tmp/temp.cgns";
 
-        if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK)
-            abort();
-        if (cg_close(index_file) != CG_OK)
-            abort();
+        if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK) {
+            std::cerr << cg_get_error() << std::endl;
+            return out;
+        }
+        if (cg_base_write(index_file, "Base", 3, 3, &index_base) != CG_OK) {
+            std::cerr << cg_get_error() << std::endl;
+            (void)cg_close(index_file);
+            std::remove(NAME);
+            return out;
+        }
+        int isize[3][3] = {0}; // TODO Why is isize 3*3?
+        int grid_size[3] = { N.size(), N[0].size(), N[0][0].size() };
+        // vertex size
+        isize[0][0] = grid_size[0] * grid_size[1] * grid_size[2];
+        // cell size
+        isize[1][0] = (grid_size[0] - 1) * (grid_size[1] - 1) * (grid_size[2] - 1);
+        // boundary size
+        isize[2][0] = 0;
+        if (cg_zone_write(index_file, index_base, "Zone 1", reinterpret_cast<int*>(isize), Unstructured, &index_zone) != CG_OK) {
+            std::cerr << cg_get_error() << std::endl;
+            (void)cg_close(index_file);
+            std::remove(NAME);
+        }
+        if (cg_close(index_file) != CG_OK) {
+            std::cerr << cg_get_error() << std::endl;
+            std::remove(NAME);
+        }
         std::ifstream in(NAME);
         out << in.rdbuf();
         in.close();
