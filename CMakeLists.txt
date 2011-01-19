@@ -83,8 +83,6 @@ if ( CGAL_FOUND )
 
   endmacro()
 
-  create_single_source_cgal_program( "UnionTest.cpp" )
-  create_single_source_cgal_program( "IntersectionTest.cpp" )
   create_single_source_cgal_program( "make_cube_3.cpp" )
   create_single_source_cgal_program_with_cgns( "cutcell.cpp" )
 
