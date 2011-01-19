@@ -1,0 +1,59 @@
+cutcell (0.0.2) maverick; urgency=low
+
+  [ David Ingram ]
+  * Created a simple CMakeLists.txt file to allow programes to be
+    compiled
+  * Created two new test for Intersection and Union, both these
+    programmes start with the definition of a unit cube read from the
+    file cube.nef3 as this is the fastest and most efficient way of
+    initialising the data structures.
+  * CMaleLists.txt has been updated to build both the new test files
+
+  [ Bruce Duncan ]
+  * Add make_cube_3 function from examples.
+  * Convert Polyhedron to Nef_polyhedron and back, with
+    Aff_transformation.
+  * Use filtered, simple cartesian kernel with quotient float.
+  * Make a grid of cubes and find the intersection.
+  * Fix up UnitCube test case.
+  * Move cube.nef3 into cutcell.cpp. Fix unsigned warning.
+  * Output the grid as VRML2, other output to stderr.
+  * Implement cell centroid.
+  * Attempt to create testcase for Direction operator== bug.
+  * Facet test case.
+  * faceArea
+  * Compute face properties.
+  * Re-add a new make_cube_3 program.
+  * Add visualisation program.
+  * Add include ${CGAL_USE_FILE}
+  * Add cutcell.cpp to CMakeLists.txt
+  * Add .gitignore
+  * Implement an Index_3 class for IJK of parent cell.
+  * Add some assert statements.
+  * Tidy up the code a bit.
+  * Calculate the volume of cut cells.
+  * Add comments and license.
+  * Factor out the algorithm from the driver.
+  * Hide data in container classes, provide access methods.
+  * Move the test case back out of the algorithm. Oops!
+  * Move N construction into array creation.
+  * Split VRML output into separate function.
+  * Create a stream modifier to allow different output formats.
+  * Create a NEF output format.
+  * Remove the global "UnitCube".
+  * Fix bounds error on nested for loops.
+  * Add more comments.
+  * Create stub CGNS output.
+  * Close and remove stub temporary file.
+  * Google style guide cleanups.
+  * More Google style guide cleanups.
+  * Even more Google style guide cleanups.
+  * Extend CGNS output with Base and Zone information.
+
+ -- Bruce Duncan <Bruce.Duncan@ed.ac.uk>  Wed, 19 Jan 2011 17:23:49 +0000
+
+cutcell (0.0.1) UNRELEASED; urgency=low
+
+  * Initial release.
+
+ -- Bruce Duncan <Bruce.Duncan@ed.ac.uk>  Thu, 29 Apr 2010 12:45:33 +0100
