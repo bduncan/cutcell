@@ -1,0 +1,27 @@
+Installation instructions
+=========================
+
+This package uses CMake. It is advisable to build the program in a separate
+directory. CMake calls this an "out of source build". After installing the
+dependencies (libcgal-dev and libcgns-dev in debian), simply use:
+
+mkdir build
+cd build
+cmake ..
+make install
+
+Building a debian package
+=========================
+
+Install the debian dev tools and git-buildpackage. Use:
+
+git-buildpackage
+
+to build a new package. Use:
+
+git-dch  --debian-tag='%(version)s' --new-version=$(REL) --release
+git commit debian/changelog -m "Release: $(REL)"
+git tag -a $(REL) -m "Tagged for release: $(REL)"
+
+to create a new versioned release. git-dch will use the git history to make the
+Debian changelog and allow you to edit it.

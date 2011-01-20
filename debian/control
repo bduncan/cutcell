@@ -1,0 +1,22 @@
+Source: cutcell
+Section: science
+Priority: optional
+Maintainer: Bruce Duncan <Bruce.Duncan@ed.ac.uk>
+Build-Depends: cmake (>= 2.6),
+               debhelper (>= 8.0.0),
+# We actually need >= 3.7, but it's not available yet)
+               libcgal-dev,
+               libcgns-dev
+Standards-Version: 3.9.1
+Homepage: http://www.github.com/bduncan/cutcell/
+
+Package: cutcell
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Description: Cartesian cut cell grid generator
+ Cutcell generates a 3D grid for computational fluid dynamics simulations. Given
+ a 3D solid, the program cuts the computational volume such that cells which do
+ not intersect the solid remain cubic. This allows computation to proceed much
+ faster with those cells. Cells which intersect the solid are cut and output as
+ an unstructured mesh.

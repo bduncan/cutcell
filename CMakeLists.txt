@@ -85,6 +85,7 @@ if ( CGAL_FOUND )
 
   create_single_source_cgal_program( "make_cube_3.cpp" )
   create_single_source_cgal_program_with_cgns( "cutcell.cpp" )
+  INSTALL( TARGETS cutcell RUNTIME DESTINATION bin )
 
 else()
 
