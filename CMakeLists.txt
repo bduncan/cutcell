@@ -36,6 +36,8 @@ macro(create_single_source_cgal_qt3_program first )
 
     add_to_cached_list( CGAL_EXECUTABLE_TARGETS ${exe_name} )
 
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+
     # Link the executable to CGAL and third-party libraries
     if ( CGAL_AUTO_LINK_ENABLED )
       target_link_libraries(${exe_name} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES} )
@@ -67,6 +69,8 @@ if ( CGAL_FOUND )
       add_executable(${exe_name} ${all})
 
       add_to_cached_list( CGAL_EXECUTABLE_TARGETS ${exe_name} )
+
+      set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
 
       # Link the executable to CGAL and third-party libraries
       if ( CGAL_AUTO_LINK_ENABLED )
