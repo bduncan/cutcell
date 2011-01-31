@@ -1,4 +1,4 @@
-project( cutcell_test )
+project( cutcell )
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4.5)
 
@@ -87,9 +87,10 @@ if ( CGAL_FOUND )
 
   endmacro()
 
+  include_directories( BEFORE include )
   create_single_source_cgal_program( "make_cube_3.cpp" )
-  create_single_source_cgal_program_with_cgns( "cutcell.cpp" )
-  INSTALL( TARGETS cutcell RUNTIME DESTINATION bin )
+  create_single_source_cgal_program_with_cgns( "cutcelltest.cpp" "cutcell.cpp" )
+  INSTALL( TARGETS cutcelltest RUNTIME DESTINATION bin )
 
 else()
 
