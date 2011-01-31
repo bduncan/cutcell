@@ -256,7 +256,7 @@ class Cell {
 };
 
 class Grid {
-    friend std::ostream& operator<<(std::ostream&, Grid &);
+    friend std::ostream& operator<<(std::ostream&, Grid const &);
     friend class GridFormat;
     public:
     // Shorthands for 3D vector arrays.
@@ -268,7 +268,7 @@ class Grid {
     V3Cell const& cell() const { return cell_; }
 
     private:
-    std::ostream& output_vrml(std::ostream&);
+    std::ostream& output_vrml(std::ostream&) const;
     std::ostream& output_nef(std::ostream&) const;
     std::ostream& output_cgns(std::ostream&) const;
     static int alloc() { return alloc_; }

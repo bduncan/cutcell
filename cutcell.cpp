@@ -162,9 +162,7 @@ void Grid::cut(Nef_polyhedron const& N1) {
     }
 };
 
-// TODO: This function should be const, but
-// Nef_polyhedron::convert_to_polyhedron is not const, so it can't be.
-std::ostream& Grid::output_vrml(std::ostream& out) {
+std::ostream& Grid::output_vrml(std::ostream& out) const {
     CGAL::VRML_2_ostream vrml_out(out);
     for (int x = 0; x < N_.size(); ++x)
         for (int y = 0; y < N_[x].size(); ++y)
@@ -228,9 +226,7 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
 
 const int Grid::alloc_ = std::ios_base::xalloc();
 
-// TODO: This function should take a Grid const&, but output_vrml can't be
-// const yet (see above), so it can't.
-std::ostream& operator<<(std::ostream& out, Grid & g) {
+std::ostream& operator<<(std::ostream& out, Grid const & g) {
     // Call the appropriate output function on the Grid object depending on
     // the stream state.
     switch (out.iword(g.alloc())) {
