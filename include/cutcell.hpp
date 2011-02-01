@@ -26,6 +26,7 @@
 #include <iostream>
 #include <map>
 #include <vector>
+#include <boost/multi_array.hpp>
 
 namespace cutcell {
 
@@ -258,10 +259,10 @@ class Cell {
 class Grid {
     friend std::ostream& operator<<(std::ostream&, Grid const &);
     friend class GridFormat;
+
     public:
-    // Shorthands for 3D vector arrays.
-    typedef std::vector< std::vector< std::vector< Nef_polyhedron > > > V3Nef;
-    typedef std::vector< std::vector< std::vector< Cell > > > V3Cell;
+    typedef boost::multi_array<Nef_polyhedron, 3> V3Nef;
+    typedef boost::multi_array<Cell, 3> V3Cell;
     Grid(int, int, int);
     void cut(Nef_polyhedron const&);
     V3Nef const& grid() const { return N_; }
@@ -272,6 +273,8 @@ class Grid {
     std::ostream& output_nef(std::ostream&) const;
     std::ostream& output_cgns(std::ostream&) const;
     static int alloc() { return alloc_; }
+    typedef V3Nef::index V3NefIndex;
+    typedef V3Cell::index V3CellIndex;
     V3Nef N_;
     V3Cell cell_;
     static const int alloc_;

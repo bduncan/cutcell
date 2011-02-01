@@ -60,24 +60,28 @@ Grid::Grid(int X, int Y, int Z) {
     assert(UnitCube.number_of_volumes() == 2);
 
     // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
-    N_ = std::vector< std::vector< std::vector< Nef_polyhedron> > >(X, std::vector< std::vector< Nef_polyhedron> >(Y, std::vector< Nef_polyhedron >(Z, UnitCube)));
+    N_ = V3Nef(boost::extents[X][Y][Z]);
 
     // Create the array to store the cell (and therefore face) properties at
     // each point.
-    cell_ = std::vector< std::vector< std::vector< Cell> > >(X, std::vector< std::vector< Cell> >(Y, std::vector< Cell >(Z)));
+    cell_ = V3Cell(boost::extents[X][Y][Z]);
 
     // Copy and translate the cube for each point.
-    for (int x = 0; x < N_.size(); ++x)
-        for (int y = 0; y < N_[x].size(); ++y)
-            for (int z = 0; z < N_[x][y].size(); ++z) {
+    for (V3NefIndex x = 0; x < X; ++x)
+        for (V3NefIndex y = 0; y < Y; ++y)
+            for (V3NefIndex z = 0; z < Z; ++z) {
                 Aff_transformation Aff(TRANSLATION, Vector(x, y, z));
                 N_[x][y][z].transform(Aff);
             }
 };
 void Grid::cut(Nef_polyhedron const& N1) {
-    for (int x = 0; x < N_.size(); ++x) {
-        for (int y = 0; y < N_[x].size(); ++y)
-            for (int z = 0; z < N_[x][y].size(); ++z) {
+    // Ensure that each multi_array is 3 dimensional
+    assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
+    // And that both arrays are the same shape.
+    assert(std::equals(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
+    for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
+        for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
+            for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
                 // Compute the intersection of this part of the grid with the
                 // test cube.
                 Nef_polyhedron I = N_[x][y][z] - N1;
@@ -165,9 +169,9 @@ void Grid::cut(Nef_polyhedron const& N1) {
 
 std::ostream& Grid::output_vrml(std::ostream& out) const {
     CGAL::VRML_2_ostream vrml_out(out);
-    for (int x = 0; x < N_.size(); ++x)
-        for (int y = 0; y < N_[x].size(); ++y)
-            for (int z = 0; z < N_[x][y].size(); ++z) {
+    for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
+        for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
+            for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
                 Polyhedron P;
                 // Convert this new cut Nef_polyhedron into the Polyhedron P.
                 N_[x][y][z].convert_to_polyhedron(P);
@@ -178,9 +182,9 @@ std::ostream& Grid::output_vrml(std::ostream& out) const {
 }
 std::ostream& Grid::output_nef(std::ostream& out) const {
     Nef_polyhedron big;
-    for (int x = 0; x < N_.size(); ++x)
-        for (int y = 0; y < N_[x].size(); ++y)
-            for (int z = 0; z < N_[x][y].size(); ++z) {
+    for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
+        for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
+            for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
                 // Output the Nef_polyhedron in NEF format.
                 big += N_[x][y][z];
             }
@@ -202,7 +206,7 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         return out;
     }
     int isize[3][3] = {0}; // TODO Why is isize 3*3?
-    int grid_size[3] = { N_.size(), N_[0].size(), N_[0][0].size() };
+    const int grid_size[3] = N_.shape();
     // vertex size
     isize[0][0] = grid_size[0] * grid_size[1] * grid_size[2];
     // cell size
@@ -214,6 +218,30 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         (void)cg_close(index_file);
         std::remove(NAME);
     }
+    // populate x, y, z with the coordinates of each point.
+    // TODO should be unordered_set?
+    std::set<Nef_polyhedron::Point_3> points_3;
+    Nef_polyhedron::Vertex_const_iterator v;
+
+    std::vector<double> xvec, yvec, zvec;
+    for (V3Nef::const_iterator it = N_.begin(); it != N_.end(); it++)
+        CGAL_forall_vertices(v, *it) {
+            Nef_polyhedron::Point_3 point = v->point();
+            if (points_3.find(point) == points_3.end()) { // if point not in points_3
+                xvec.insert(point.x());
+                yvec.insert(point.y());
+                zvec.insert(point.z());
+                points_3.insert(point);
+            }
+        }
+    if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", x, &index_coord) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", y, &index_coord) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", z, &index_coord) != CG_OK) {
+        std::cerr << cg_get_error() << std::endl;
+        (void)cg_close(index_file);
+        std::remove(NAME);
+    }
+
     if (cg_close(index_file) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         std::remove(NAME);
