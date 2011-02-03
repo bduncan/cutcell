@@ -223,16 +223,18 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
     Nef_polyhedron::Vertex_const_iterator v;
 
     std::vector<double> xvec, yvec, zvec;
-    for (V3Nef::const_iterator it = N_.begin(); it != N_.end(); it++)
-        CGAL_forall_vertices(v, *it) {
-            Nef_polyhedron::Point_3 point = v->point();
-            if (points_3.find(point) == points_3.end()) { // if point not in points_3
-                xvec.insert(point.x());
-                yvec.insert(point.y());
-                zvec.insert(point.z());
-                points_3.insert(point);
-            }
-        }
+    for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
+        for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
+            for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
+                CGAL_forall_vertices(v, N_[x][y][z]) {
+                    Nef_polyhedron::Point_3 point = v->point();
+                    if (points_3.find(point) == points_3.end()) { // if point not in points_3
+                        xvec.insert(CGAL::to_double(point.x()));
+                        yvec.insert(CGAL::to_double(point.y()));
+                        zvec.insert(CGAL::to_double(point.z()));
+                        points_3.insert(point);
+                    }
+                }
     if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", x, &index_coord) != CG_OK ||
         cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", y, &index_coord) != CG_OK ||
         cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", z, &index_coord) != CG_OK) {
