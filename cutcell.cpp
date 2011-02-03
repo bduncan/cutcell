@@ -206,11 +206,10 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         return out;
     }
     int isize[3][3] = {0}; // TODO Why is isize 3*3?
-    const int grid_size[3] = N_.shape();
     // vertex size
-    isize[0][0] = grid_size[0] * grid_size[1] * grid_size[2];
+    isize[0][0] = N_.shape()[0] * N_.shape()[1] * N_.shape()[2];
     // cell size
-    isize[1][0] = (grid_size[0] - 1) * (grid_size[1] - 1) * (grid_size[2] - 1);
+    isize[1][0] = (N_.shape()[0] - 1) * (N_.shape()[1] - 1) * (N_.shape()[2] - 1);
     // boundary size
     isize[2][0] = 0;
     if (cg_zone_write(index_file, index_base, "Zone 1", reinterpret_cast<int*>(isize), Unstructured, &index_zone) != CG_OK) {
