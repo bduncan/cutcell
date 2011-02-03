@@ -70,7 +70,7 @@ Grid::Grid(int X, int Y, int Z) {
     for (V3NefIndex x = 0; x < X; ++x)
         for (V3NefIndex y = 0; y < Y; ++y)
             for (V3NefIndex z = 0; z < Z; ++z) {
-                Aff_transformation Aff(TRANSLATION, Vector(x, y, z));
+                Aff_transformation Aff(TRANSLATION, Vector(int(x), int(y), int(z)));
                 N_[x][y][z].transform(Aff);
             }
 };
@@ -192,7 +192,8 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
     return out;
 }
 std::ostream& Grid::output_cgns(std::ostream& out) const {
-    int index_file = 0, index_base = 0, index_zone = 0;
+    int index_file = 0, index_base = 0, index_zone = 0
+    int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
     char const * const NAME = "/tmp/temp.cgns";
 
     if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK) {
@@ -222,6 +223,8 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
     std::set<Nef_polyhedron::Point_3> points_3;
     Nef_polyhedron::Vertex_const_iterator v;
 
+    // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
+    // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
     std::vector<double> xvec, yvec, zvec;
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
@@ -229,15 +232,19 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
                 CGAL_forall_vertices(v, N_[x][y][z]) {
                     Nef_polyhedron::Point_3 point = v->point();
                     if (points_3.find(point) == points_3.end()) { // if point not in points_3
-                        xvec.insert(CGAL::to_double(point.x()));
-                        yvec.insert(CGAL::to_double(point.y()));
-                        zvec.insert(CGAL::to_double(point.z()));
+                        xvec.push_back(CGAL::to_double(point.x()));
+                        yvec.push_back(CGAL::to_double(point.y()));
+                        zvec.push_back(CGAL::to_double(point.z()));
                         points_3.insert(point);
                     }
                 }
-    if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", x, &index_coord) != CG_OK ||
-        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", y, &index_coord) != CG_OK ||
-        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", z, &index_coord) != CG_OK) {
+            }
+    assert(xvec.size() >= N_.shape()[0]);
+    assert(yvec.size() >= N_.shape()[1]);
+    assert(zvec.size() >= N_.shape()[2]);
+    if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", &xvec[0], &index_coord_x) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", &yvec[0], &index_coord_y) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", &zvec[0], &index_coord_z) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
         std::remove(NAME);
