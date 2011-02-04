@@ -192,7 +192,7 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
     return out;
 }
 std::ostream& Grid::output_cgns(std::ostream& out) const {
-    int index_file = 0, index_base = 0, index_zone = 0
+    int index_file = 0, index_base = 0, index_zone = 0;
     int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
     char const * const NAME = "/tmp/temp.cgns";
 
