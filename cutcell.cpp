@@ -49,7 +49,7 @@ struct Normal_vector {
     }
 };
 
-Grid::Grid(int X, int Y, int Z) {
+Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {
     // Create the Unit Cube from the global string definition.
     Nef_polyhedron UnitCube;
     std::istringstream in(cube);
@@ -59,17 +59,11 @@ Grid::Grid(int X, int Y, int Z) {
     assert(UnitCube.number_of_edges() == 12);
     assert(UnitCube.number_of_volumes() == 2);
 
-    // Create an array to hold NX*NY*NZ Nef_polyhedron cubes.
-    N_ = V3Nef(boost::extents[X][Y][Z]);
-
-    // Create the array to store the cell (and therefore face) properties at
-    // each point.
-    cell_ = V3Cell(boost::extents[X][Y][Z]);
-
     // Copy and translate the cube for each point.
     for (V3NefIndex x = 0; x < X; ++x)
         for (V3NefIndex y = 0; y < Y; ++y)
             for (V3NefIndex z = 0; z < Z; ++z) {
+                N_[x][y][z] = UnitCube;
                 Aff_transformation Aff(TRANSLATION, Vector(int(x), int(y), int(z)));
                 N_[x][y][z].transform(Aff);
             }
@@ -78,7 +72,7 @@ void Grid::cut(Nef_polyhedron const& N1) {
     // Ensure that each multi_array is 3 dimensional
     assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
     // And that both arrays are the same shape.
-    assert(std::equals(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
+    assert(std::equal(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
