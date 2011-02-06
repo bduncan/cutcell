@@ -211,6 +211,7 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
         std::remove(NAME);
+        return out;
     }
     // populate x, y, z with the coordinates of each point.
     // TODO should be unordered_set?
@@ -233,6 +234,7 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
                     }
                 }
             }
+    // We told cg_zone_write to expect N_.shape() vertex coordinates in each dimension.
     assert(xvec.size() >= N_.shape()[0]);
     assert(yvec.size() >= N_.shape()[1]);
     assert(zvec.size() >= N_.shape()[2]);
@@ -242,11 +244,13 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
         std::remove(NAME);
+        return out;
     }
 
     if (cg_close(index_file) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         std::remove(NAME);
+        return out;
     }
     std::ifstream in(NAME);
     out << in.rdbuf();
