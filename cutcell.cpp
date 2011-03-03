@@ -185,20 +185,16 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
     out << big;
     return out;
 }
-std::ostream& Grid::output_cgns(std::ostream& out) const {
+int Grid::output_cgns_file(std::string const& name) const {
     int index_file = 0, index_base = 0, index_zone = 0;
     int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
-    char const * const NAME = "/tmp/temp.cgns";
-
-    if (cg_open(NAME, CG_MODE_WRITE, &index_file) != CG_OK) {
-        std::cerr << cg_get_error() << std::endl;
-        return out;
+    if (cg_open(name.c_str(), CG_MODE_WRITE, &index_file) != CG_OK) {
+        return 1;
     }
     if (cg_base_write(index_file, "Base", 3, 3, &index_base) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
-        std::remove(NAME);
-        return out;
+        return 1;
     }
     int isize[3][3] = {0}; // TODO Why is isize 3*3?
     // vertex size
@@ -210,8 +206,7 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
     if (cg_zone_write(index_file, index_base, "Zone 1", reinterpret_cast<int*>(isize), Unstructured, &index_zone) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
-        std::remove(NAME);
-        return out;
+        return 1;
     }
     // populate x, y, z with the coordinates of each point.
     // TODO should be unordered_set?
@@ -243,19 +238,25 @@ std::ostream& Grid::output_cgns(std::ostream& out) const {
         cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", &zvec[0], &index_coord_z) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
-        std::remove(NAME);
-        return out;
+        return 1;
     }
-
     if (cg_close(index_file) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
-        std::remove(NAME);
+        return 1;
+    }
+    return 0;
+}
+std::ostream& Grid::output_cgns(std::ostream& out) const {
+    const std::string NAME("/tmp/temp.cgns");
+
+    if (output_cgns_file(NAME) != 0) {
+        std::remove(NAME.c_str());
         return out;
     }
-    std::ifstream in(NAME);
+    std::ifstream in(NAME.c_str());
     out << in.rdbuf();
     in.close();
-    std::remove(NAME);
+    std::remove(NAME.c_str());
     return out;
 }
 

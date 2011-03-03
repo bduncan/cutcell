@@ -11,105 +11,64 @@ endif()
 find_package(CGAL QUIET COMPONENTS Core Qt3 )
 include(${CGAL_USE_FILE})
 
-find_package(Qt3-patched )
-
-macro(create_single_source_cgal_qt3_program first )
-
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${first})
-    set( all ${CMAKE_CURRENT_SOURCE_DIR}/${first} )
-
-    foreach( i ${ARGN} )
-      set( all ${all} ${CMAKE_CURRENT_SOURCE_DIR}/${i} )
-    endforeach()
-
-    get_filename_component(exe_name ${first} NAME_WE)
-
-    QT3_AUTOMOC( ${all} )
-
-    # Make sure the compiler can find generated .moc files
-    include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
-    include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})
-
-    include_directories( ${QT3_INCLUDE_DIR} )
-
-    add_executable  (${exe_name} ${all})
-
-    add_to_cached_list( CGAL_EXECUTABLE_TARGETS ${exe_name} )
-
-    set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
-
-    # Link the executable to CGAL and third-party libraries
-    if ( CGAL_AUTO_LINK_ENABLED )
-      target_link_libraries(${exe_name} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES} )
-    else()
-      target_link_libraries(${exe_name} ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES})
-    endif()
-
-  endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${first})
-
-endmacro()
-
 if ( CGAL_FOUND )
 
-  include( ${CGAL_USE_FILE} )
-  include( CGAL_CreateSingleSourceCGALProgram )
-
-  macro(create_single_source_cgal_program_with_cgns first )
-
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${first})
-
-      set( all ${CMAKE_CURRENT_SOURCE_DIR}/${first} )
-
-      foreach( i ${ARGN} )
-        set( all ${all} ${CMAKE_CURRENT_SOURCE_DIR}/${i} )
-      endforeach()
-
-      get_filename_component(exe_name ${first} NAME_WE)
-
-      add_executable(${exe_name} ${all})
-
-      add_to_cached_list( CGAL_EXECUTABLE_TARGETS ${exe_name} )
-
-      set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
-
-      # Link the executable to CGAL and third-party libraries
-      if ( CGAL_AUTO_LINK_ENABLED )
-
-        target_link_libraries(${exe_name} ${CGAL_3RD_PARTY_LIBRARIES} cgns )
-
-      else()
-
-        target_link_libraries(${exe_name} ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} cgns )
-
-      endif()
-
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+    include_directories(BEFORE include)
+    add_executable( "make_cube_3" "make_cube_3.cpp")
+    add_to_cached_list(CGAL_EXECUTABLE_TARGETS "make_cube_3")
+    # Link the executable to CGAL and third-party libraries
+    if ( CGAL_AUTO_LINK_ENABLED )
+      target_link_libraries("make_cube_3" ${CGAL_3RD_PARTY_LIBRARIES})
+    else()
+      target_link_libraries("make_cube_3" ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
     endif()
 
-  endmacro()
+    set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+    add_executable( "cutcelltest" "cutcelltest.cpp" "cutcell.cpp")
+    add_to_cached_list(CGAL_EXECUTABLE_TARGETS "cutcelltest")
+    # Link the executable to CGAL and third-party libraries
+    if ( CGAL_AUTO_LINK_ENABLED )
+      target_link_libraries("cutcelltest" ${CGAL_3RD_PARTY_LIBRARIES} cgns)
+    else()
+      target_link_libraries("cutcelltest" ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} cgns)
+    endif()
+    install( TARGETS cutcelltest RUNTIME DESTINATION bin )
 
-  include_directories( BEFORE include )
-  create_single_source_cgal_program( "make_cube_3.cpp" )
-  create_single_source_cgal_program_with_cgns( "cutcelltest.cpp" "cutcell.cpp" )
-  INSTALL( TARGETS cutcelltest RUNTIME DESTINATION bin )
+    find_package(Qt3-patched)
+    if (QT3_FOUND AND CGAL_Qt3_FOUND)
+        set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+        include_directories(BEFORE ${QT3_INCLUDE_DIR})
+        add_executable("visualization_SNC" "visualization_SNC.cpp")
+        add_to_cached_list(CGAL_EXECUTABLE_TARGETS "visualization_SNC")
+        # Link the executable to CGAL and third-party libraries
+        if ( CGAL_AUTO_LINK_ENABLED )
+          target_link_libraries("visualization_SNC" ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES} )
+        else()
+          target_link_libraries("visualization_SNC" ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES})
+        endif()
 
-else()
+    else (QT3_FOUND AND CGAL_Qt3_FOUND)
 
-    message(STATUS "This program requires the CGAL library, and will not be compiled.")
+      message(STATUS "NOTICE: This demo requires CGAL and Qt3, and will not be compiled.")
+
+    endif (QT3_FOUND AND CGAL_Qt3_FOUND)
+
+    find_package(Boost COMPONENTS program_options)
+    if (Boost_FOUND AND Boost_PROGRAM_OPTIONS_FOUND)
+        set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+        include_directories(${Boost_INCLUDE_DIRS})
+        add_executable("cutcellcli" "cutcellcli.cpp" "cutcell.cpp")
+        target_link_libraries("cutcellcli" ${Boost_LIBRARIES} ${Boost_program_options_LIBRARY})
+        # Link the executable to CGAL and third-party libraries
+        if ( CGAL_AUTO_LINK_ENABLED )
+          target_link_libraries("cutcellcli" ${CGAL_3RD_PARTY_LIBRARIES} cgns)
+        else()
+          target_link_libraries("cutcellcli" ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} cgns)
+        endif()
+        install( TARGETS cutcellcli RUNTIME DESTINATION bin )
+    else (Boost_FOUND AND Boost_PROGRAM_OPTIONS_FOUND)
+        message(STATUS "NOTICE: This program requires Boost, and will not be compiled.")
+    endif(Boost_FOUND AND Boost_PROGRAM_OPTIONS_FOUND)
 
 endif()
-
-if ( CGAL_FOUND AND QT3_FOUND AND CGAL_Qt3_FOUND )
-
-  include(Qt3Macros-patched)
-  include(CGAL_CreateSingleSourceCGALProgram)
-
-  include_directories (BEFORE include)
-
-  create_single_source_cgal_qt3_program( visualization_SNC.cpp )
-
-else( CGAL_FOUND AND QT3_FOUND AND CGAL_Qt3_FOUND )
-
-  message(STATUS "NOTICE: This demo requires CGAL and Qt3, and will not be compiled.")
-
-endif( CGAL_FOUND AND QT3_FOUND AND CGAL_Qt3_FOUND )
-
