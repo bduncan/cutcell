@@ -35,20 +35,6 @@ namespace cutcell {
 
 typedef CGAL::Triangulation_3<cutcell::Kernel> Triangulation;
 
-// A function to compute the plane normal of a Facet
-// From CGAL-3.7/examples/Polyhedron/polyhedron_prog_normals.cpp
-struct Normal_vector {
-    template <class Facet>
-    typename Facet::Plane_3 operator()(Facet const& f) {
-        typename Facet::Halfedge_const_handle h = f.halfedge();
-        // Facet::Plane_3 is the normal vector type. We assume the
-        // CGAL Kernel here and use its global functions.
-        return typename Facet::Plane_3(CGAL::cross_product(
-            h->next()->vertex()->point() - h->vertex()->point(),
-            h->next()->next()->vertex()->point() - h->next()->vertex()->point()));
-    }
-};
-
 Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {
     // Create the Unit Cube from the global string definition.
     Nef_polyhedron UnitCube;
@@ -119,25 +105,39 @@ void Grid::cut(Nef_polyhedron const& N1) {
                     cell_[x][y][z].volume(volume);
                     assert(cell_[x][y][z].volume() > 0.0); // TODO should also be able to put an upper bound on the volume.
 
-                    // Compute the normal vectors for each facet.
-                    // FIXME Use Nef_polyhedron. plane() seems to be provided...?
-                    std::transform(P.facets_begin(), P.facets_end(), P.planes_begin(),
-                                   Normal_vector());
-
+                    continue; // FIXME This stuff only works if the faces are triangular.
                     // FIXME convert to iterator over halffacets of Nef_polyhedron I.
-                    for (Polyhedron::Facet_const_iterator fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+                    // Nef_polyhedrons have Halffacets
+                    // Halffacets have halfedge_cycles
+                    // halfedge_cycles are SHalfedges or one SHalfloop
+                    Nef_polyhedron::Halffacet_const_iterator fi;
+                    CGAL_forall_facets(fi, I) {
                         Face newFace;
-                        Polyhedron::Halfedge_const_handle h1, h2, h3;
+                        Nef_polyhedron::SHalfedge_const_handle h[3];
+                        size_t i = 0;
 
-                        assert(fi->is_triangle());
-                        // circulate halfedges => vertices
-                        h1 = fi->halfedge();
-                        h2 = h1->next();
-                        h3 = h2->next();
-                        assert(h3->next() == h1);
+                        // circulate 3 halfedges => vertices
+                        //for (Nef_polyhedron::Halffacet_cycle_const_iterator hfi = fi->facet_cycles_begin(); hfi != fi->facet_cycles_end(); ++hfi) {
+                        Nef_polyhedron::Halffacet_cycle_const_iterator hfc;
+                        CGAL_forall_facet_cycles_of(hfc, fi) {
+                            assert(hfc.is_shalfedge());
+                            Nef_polyhedron::SHalfedge_const_handle se(hfc);
+                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc(se);
+                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_end(hc);
+                            CGAL_For_all(hc, hc_end) {
+                                assert(i < sizeof(h)/sizeof(h[0]));
+                                h[i] = Nef_polyhedron::SHalfedge_const_handle(hc);
+                                std::cerr << "SHalfedge from " << h[i]->source()->point() << " to " << h[i]->target()->point() << std::endl;
+                                ++i;
+                            }
+                        }
+                        std::cerr << i << std::endl;
+                        if (i != 3)
+                            continue;
+                        assert(i == 3); // This should have been a triangular facet.
 
                         // Compute the squared area of this triangular face.
-                        newFace.area(CGAL::squared_area(h1->vertex()->point(), h2->vertex()->point(), h3->vertex()->point()));
+                        newFace.area(CGAL::squared_area(h[0]->source()->point(), h[1]->source()->point(), h[2]->source()->point()));
                         assert(newFace.area() > 0.0); // TODO should also be able to put an upper bound on the area.
 
                         // Store the plane normal of this face.
@@ -145,16 +145,16 @@ void Grid::cut(Nef_polyhedron const& N1) {
 
                         // Compute the centroid of this triangular face.
                         points_3.clear();
-                        points_3.push_back(h1->vertex()->point());
-                        points_3.push_back(h2->vertex()->point());
-                        points_3.push_back(h3->vertex()->point());
+                        points_3.push_back(h[0]->source()->point());
+                        points_3.push_back(h[1]->source()->point());
+                        points_3.push_back(h[2]->source()->point());
                         newFace.centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
 
                         newFace.fluid(false); // FIXME
 
                         // Store this new face in the list of faces belonging
                         // to this cell.
-                        cell_[x][y][z].addFace(Direction(fi->plane()), newFace);
+                        cell_[x][y][z].addFace(newFace);
                     }
                 }
             }
@@ -188,6 +188,8 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
 int Grid::output_cgns_file(std::string const& name) const {
     int index_file = 0, index_base = 0, index_zone = 0;
     int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
+    int index_section = 0;
+    int cells = 0;
     if (cg_open(name.c_str(), CG_MODE_WRITE, &index_file) != CG_OK) {
         return 1;
     }
@@ -196,39 +198,70 @@ int Grid::output_cgns_file(std::string const& name) const {
         (void)cg_close(index_file);
         return 1;
     }
-    int isize[3][3] = {0}; // TODO Why is isize 3*3?
-    // vertex size
-    isize[0][0] = N_.shape()[0] * N_.shape()[1] * N_.shape()[2];
-    // cell size
-    isize[1][0] = (N_.shape()[0] - 1) * (N_.shape()[1] - 1) * (N_.shape()[2] - 1);
-    // boundary size
-    isize[2][0] = 0;
-    if (cg_zone_write(index_file, index_base, "Zone 1", reinterpret_cast<int*>(isize), Unstructured, &index_zone) != CG_OK) {
-        std::cerr << cg_get_error() << std::endl;
-        (void)cg_close(index_file);
-        return 1;
-    }
     // populate x, y, z with the coordinates of each point.
-    // TODO should be unordered_set?
-    std::set<Nef_polyhedron::Point_3> points_3;
-    Nef_polyhedron::Vertex_const_iterator v;
+    std::vector<Nef_polyhedron::Point_3> points_3;
 
     // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
     // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
     std::vector<double> xvec, yvec, zvec;
+    std::vector<int> elements;
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                CGAL_forall_vertices(v, N_[x][y][z]) {
-                    Nef_polyhedron::Point_3 point = v->point();
-                    if (points_3.find(point) == points_3.end()) { // if point not in points_3
-                        xvec.push_back(CGAL::to_double(point.x()));
-                        yvec.push_back(CGAL::to_double(point.y()));
-                        zvec.push_back(CGAL::to_double(point.z()));
-                        points_3.insert(point);
+                Nef_polyhedron::Halffacet_const_iterator fi;
+                CGAL_forall_facets(fi, N_[x][y][z]) {
+                    // circulate 3 halfedges => vertices
+                    //for (Nef_polyhedron::Halffacet_cycle_const_iterator hfi = fi->facet_cycles_begin(); hfi != fi->facet_cycles_end(); ++hfi) {
+                    Nef_polyhedron::Halffacet_cycle_const_iterator hfc;
+                    CGAL_forall_facet_cycles_of(hfc, fi) {
+                        int elements_end_index = elements.size();
+                        elements.push_back(NGON_n);
+                        size_t i = 0;
+                        assert(hfc.is_shalfedge());
+                        Nef_polyhedron::SHalfedge_const_handle se(hfc);
+                        Nef_polyhedron::SHalfedge_around_facet_const_circulator hc(se);
+                        Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_end(hc);
+                        CGAL_For_all(hc, hc_end) {
+                            std::cerr << "SHalfedge from " << hc->source()->point() << std::endl;
+                            Nef_polyhedron::Point_3 point = hc->source()->point();
+                            std::vector<Nef_polyhedron::Point_3>::iterator it;
+                            for (it = points_3.begin(); it != points_3.end(); ++it)
+                                if (*it == point)
+                                    break;
+                            if (it == points_3.end()) { // if point not in points_3
+                                xvec.push_back(CGAL::to_double(point.x()));
+                                yvec.push_back(CGAL::to_double(point.y()));
+                                zvec.push_back(CGAL::to_double(point.z()));
+                                points_3.push_back(point);
+                                std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
+                                it = points_3.end();
+                                --it;
+                            }
+                            // Push the index of the element in the points_3 set into the connectivity list.
+                            int element_index = it - points_3.begin(); //std::distance(points_3.begin(), it);
+                            std::cerr << "element index: " << element_index << std::endl;
+                            elements.push_back(element_index);
+                            ++i;
+                        }
+                        std::cerr << "End of this facet cycle. number of elements is " << (elements.size() - elements_end_index - 1) << std::endl;
+                        elements[elements_end_index] = NGON_n + elements.size() - elements_end_index - 1;
+                        ++cells;
                     }
                 }
             }
+    int isize[3][3] = {0}; // TODO Why is isize 3*3?
+    // vertex size
+    isize[0][0] = points_3.size();
+    // cell size
+    isize[1][0] = cells;
+    // boundary size
+    isize[2][0] = 0;
+    if (cg_zone_write(index_file, index_base, "Zone_1", reinterpret_cast<int*>(isize), Unstructured, &index_zone) != CG_OK) {
+        std::cerr << cg_get_error() << std::endl;
+        (void)cg_close(index_file);
+        return 1;
+    }
+    std::cerr << "Writing coordinates..." << std::endl;
     // We told cg_zone_write to expect N_.shape() vertex coordinates in each dimension.
     assert(xvec.size() >= N_.shape()[0]);
     assert(yvec.size() >= N_.shape()[1]);
@@ -240,6 +273,13 @@ int Grid::output_cgns_file(std::string const& name) const {
         (void)cg_close(index_file);
         return 1;
     }
+    std::cerr << "Writing elements..." << std::endl;
+    if (cg_section_write(index_file, index_base, index_zone, "GridElements", MIXED, 1, cells, /* nbndry = */ 0, &elements[0], &index_section) != CG_OK) {
+        std::cerr << cg_get_error() << std::endl;
+        (void)cg_close(index_file);
+        return 1;
+    }
+
     if (cg_close(index_file) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         return 1;

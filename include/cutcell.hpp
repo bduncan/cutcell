@@ -24,7 +24,6 @@
 #include <CGAL/Polyhedron_traits_with_normals_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <iostream>
-#include <map>
 #include <vector>
 #include <boost/multi_array.hpp>
 
@@ -182,20 +181,20 @@ sfaces     16\n\
 class Face {
     public:
     Face() {}
-    Face(Vector normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal_(normal), centroid_(centroid), area_(area), fluid_(fluid) {}
+    Face(Kernel::Plane_3 normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal_(normal), centroid_(centroid), area_(area), fluid_(fluid) {}
 
-    Vector const& normal() const { return normal_; }
+    Kernel::Plane_3 const& normal() const { return normal_; }
     Kernel::Point_3 const& centroid() const { return centroid_; }
     Kernel::FT const& area() const { return area_; }
     bool fluid() const { return fluid_; }
 
-    void normal(Vector const& normal) { normal_ = normal; }
+    void normal(Kernel::Plane_3 const& normal) { normal_ = normal; }
     void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
     void area(Kernel::FT const& area) { area_ = area; }
     void fluid(bool fluid) { fluid_ = fluid; }
 
     private:
-    Vector normal_;
+    Kernel::Plane_3 normal_;
     Kernel::Point_3 centroid_;
     Kernel::FT area_;
     bool fluid_; // whether our neighbour is a fluid cell.
@@ -218,32 +217,22 @@ class Index_3 {
     int i_, j_, k_;
 };
 
-// A function to compare two Directions, allowing them to be stored in a map.
-class compare {
-    public:
-    bool operator()(Direction const& x, Direction const& y) {
-        return x != y;
-    }
-};
-
 // A description of the cell properties of one of the cut cells.
 class Cell {
     public:
-    typedef std::map<Direction, std::vector<Face>, compare> faceMap;
-
     Cell() {}
     Type const& type() const { return type_; }
     Kernel::Point_3 const& centroid() const { return centroid_; }
     Kernel::FT const& volume() const { return volume_; }
     Index_3 const& parent() const { return parent_; }
-    faceMap const& faces() const { return faces_; }
+    std::vector<Face> const& faces() const { return faces_; }
 
     void type(Type type) { type_ = type; }
     void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
     void volume(Kernel::FT const& volume) { volume_ = volume; }
     void parent(Index_3 const& parent) { parent_ = parent; }
-    void faces(faceMap const& faces) { faces_ = faces; }
-    void addFace(Direction const& d, Face const& f) { faces_[d].push_back(f); }
+    void faces(std::vector<Face> const& faces) { faces_ = faces; }
+    void addFace(Face const& f) { faces_.push_back(f); }
 
     private:
     // Cell properties
@@ -253,7 +242,7 @@ class Cell {
     Index_3 parent_; // I, J, K of parent cell.
 
     // Face properties
-    faceMap faces_;
+    std::vector<Face> faces_;
 };
 
 class Grid {
