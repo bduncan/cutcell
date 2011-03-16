@@ -2,37 +2,35 @@
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <boost/multi_array.hpp>
+#include <iostream>
+#include <sstream>
+#include <cutcell.hpp>
 
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 
-class Cell {
-    int x;
-};
-
-class Grid {
-    public:
-    typedef boost::multi_array<Nef_polyhedron, 3> V3Nef;
-    typedef boost::multi_array<Cell, 3> V3Cell;
-    // This segfaults deep in Nef_polyhedron::operator=
-    Grid(int X, int Y) {
-        N_ = V3Nef(boost::extents[X][Y][5]);
+int main(int argc, char **argv) {
+    std::istringstream in(cutcell::cube);
+    Nef_polyhedron N1;
+    in >> N1;
+    Nef_polyhedron::Halffacet_const_iterator fi;
+    int i = 0;
+    CGAL_forall_facets(fi, N1) {
+        std::cout << "Halffacet " << i++ << " plane: " << fi->plane().a()
+                                         << " "  << fi->plane().b()
+                                         << " "  << fi->plane().c()
+                                         << " "  << fi->plane().d()
+                                         << std::endl;
+        Nef_polyhedron::Halffacet_cycle_const_iterator fc;
+        fc = fi->facet_cycles_begin();
+        int j = 0;
+        CGAL_For_all(fc, fi->facet_cycles_end()) {
+            Nef_polyhedron::SHalfedge_const_handle se = Nef_polyhedron::SHalfedge_const_handle(fc);
+            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_start(se);
+            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_end(hc_start);
+            CGAL_For_all(hc_start, hc_end)
+                std::cout << "Point " << j++ << ": " << hc_start->source()->center_vertex()->point() << std::endl;
+        }
     }
-    // This doesn't.
-    Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]) {}
-    V3Nef N_;
-    V3Cell cell_;
-};
-
-int main() {
-    std::cerr << "Testcase. localN" << std::endl;
-    Grid::V3Nef localN = Grid::V3Nef(boost::extents[5][5][5]);
-    std::cout << localN[0][0][0];
-    std::cerr << "Testcase. initialiser list" << std::endl;
-    Grid g(5, 5, 5);
-    std::cout << g.N_[0][0][0] << std::endl;
-    std::cerr << "Testcase. assignment in constructor" << std::endl;
-    Grid f(5, 5);
-    std::cout << f.N_[0][0][0] << std::endl;
     return 0;
 }
