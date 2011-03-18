@@ -37,6 +37,7 @@ if ( CGAL_FOUND )
 
     find_package(Qt3-patched)
     if (QT3_FOUND AND CGAL_Qt3_FOUND)
+        include(Qt3Macros-patched) # QT3_AUTOMOC
         set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
         include_directories(BEFORE ${QT3_INCLUDE_DIR})
         add_executable("visualization_SNC" "visualization_SNC.cpp")
@@ -48,6 +49,22 @@ if ( CGAL_FOUND )
           target_link_libraries("visualization_SNC" ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES})
         endif()
 
+        QT3_AUTOMOC( "cutcellgui.cpp" )
+
+        # Make sure the compiler can find generated .moc files
+        include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
+        include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})
+
+        add_executable("cutcellgui" "cutcellgui.cpp" "cutcell.cpp")
+        add_to_cached_list(CGAL_EXECUTABLE_TARGETS "cutcellgui")
+
+        # Link the executable to CGAL and third-party libraries
+        if ( CGAL_AUTO_LINK_ENABLED )
+          target_link_libraries("cutcellgui" ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES} )
+        else()
+          target_link_libraries("cutcellgui" ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES})
+        endif()
+        install( TARGETS cutcellgui RUNTIME DESTINATION bin )
     else (QT3_FOUND AND CGAL_Qt3_FOUND)
 
       message(STATUS "NOTICE: This demo requires CGAL and Qt3, and will not be compiled.")
