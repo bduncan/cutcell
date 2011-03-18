@@ -1,7 +1,7 @@
-/* Cartesian cut cell grid generator: Test driver
+/* Cartesian cut cell grid generator: Command line interface
  *
- * Cut a test cube at (0.5, 0.5, 0.5) and output the CGNS representation
- * of the resulting cartesian cut cell grid.
+ * Given an OFF file and grid parameters, cut a grid and output the CGNS
+ * representation of the resulting cartesian cut cell grid.
  *
  * Copyright 2010 Bruce Duncan, University of Edinburgh
  *
@@ -21,6 +21,7 @@
 
 #include <cutcell.hpp>
 #include <boost/program_options.hpp>
+#include <CGAL/IO/Polyhedron_iostream.h>
 #include <iostream>
 #include <fstream>
 
@@ -37,7 +38,7 @@ int main(int argc, char **argv) {
         ("offset-y,oy", boost::program_options::value<double>(&oY)->default_value(0.0), "translation vector in Y dimension")
         ("offset-z,oz", boost::program_options::value<double>(&oZ)->default_value(0.0), "translation vector in Z dimension")
         ("scaling,s", boost::program_options::value<double>(&s)->default_value(1.0), "scale factor")
-        ("input-file,I", boost::program_options::value<std::string>(), "Input file in Nef format (omit to read from stdin)")
+        ("input-file,I", boost::program_options::value<std::string>(), "Input file in OFF format (omit to read from stdin)")
         ("output-file,O", boost::program_options::value<std::string>(), "Output file in CGNS format (omit to write to stdout)")
     ;
     boost::program_options::positional_options_description p;
@@ -52,15 +53,18 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    cutcell::Nef_polyhedron N1;
+    cutcell::Polyhedron P;
 
-    // Read the Nef format from the input file or stdin.
+    // Read the OFF format from the input file or stdin.
     if (vm.count("input-file")) {
         std::ifstream in(vm["input-file"].as<std::string>().c_str());
-        in >> N1; // parse the file as a Nef_polyhedron object.
+        in >> P; // parse the file as a Polyhedron object.
     } else {
-        std::cin >> N1; // parse the file as a Nef_polyhedron object.
+        std::cin >> P; // parse the file as a Polyhedron object.
     }
+    // Convert Polyhedron to Nef_polyhedron
+    cutcell::Nef_polyhedron N1(P);
+
     // Transform the object accordingly.
     cutcell::Aff_transformation Aff1(cutcell::TRANSLATION, cutcell::Vector(oX, oY, oZ));
     cutcell::Aff_transformation Aff2(cutcell::SCALING, s);
@@ -73,7 +77,7 @@ int main(int argc, char **argv) {
     // Cut the grid to the object.
     grid.cut(N1);
 
-    // Output the grid in NEF format.
+    // Output the grid in CGNS format.
     if (vm.count("output-file"))
         grid.output_cgns_file(vm["output-file"].as<std::string>());
     else
