@@ -20,13 +20,14 @@
  */
 
 #include <cutcell.hpp>
-#include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
 #include <QApplication>
+#include <QtGui>
 #include <cutcellgui.hpp>
+#include <CGAL/IO/Polyhedron_iostream.h>
 
-cutcell::gui::cutcellgui(QWidget *parent) {
+cutcellgui::cutcellgui(QWidget *parent) {
     setupUi(this);
 
     connect(generateButton, SIGNAL(clicked()), this, SLOT(generateSlot()));
@@ -34,7 +35,7 @@ cutcell::gui::cutcellgui(QWidget *parent) {
     connect(cgnsOpenButton, SIGNAL(clicked()), this, SLOT(getOutFile()));
 }
 
-void cutcell::gui::cutcellgui::getInFile()
+void cutcellgui::getInFile()
 {
     QString path;
 
@@ -47,7 +48,7 @@ void cutcell::gui::cutcellgui::getInFile()
     offFileLineEdit->setText( path );
 }
 
-void cutcell::gui::cutcellgui::getOutFile()
+void cutcellgui::getOutFile()
 {
     QString path;
 
@@ -60,10 +61,10 @@ void cutcell::gui::cutcellgui::getOutFile()
     cgnsFileLineEdit->setText( path );
 }
 
-void cutcell::gui::cutcellgui::generateSlot() {
+void cutcellgui::generateSlot() {
     cutcell::Polyhedron P;
     // Read the OFF format from the input file or stdin.
-    std::ifstream in(offFileLineEdit->text());
+    std::ifstream in(qPrintable(offFileLineEdit->text()));
     in >> P; // parse the file as a Nef_polyhedron object.
     cutcell::Nef_polyhedron N1(P);
     // Transform the object accordingly.
@@ -76,18 +77,18 @@ void cutcell::gui::cutcellgui::generateSlot() {
     N1.transform(Aff2);
 
     // Create the cutting grid.
-    cutcell::Grid grid(grixSizeXSpinBox->value(), grixSizeYSpinBox->value(), grixSizeZSpinBox->value());
+    cutcell::Grid grid(gridSizeXSpinBox->value(), gridSizeYSpinBox->value(), gridSizeZSpinBox->value());
 
     // Cut the grid to the object.
     grid.cut(N1);
 
     // Output the grid in CGNS format.
-    grid.output_cgns_file(cgnsFileLineEdit->text());
+    grid.output_cgns_file(qPrintable(cgnsFileLineEdit->text()));
 }
 
 int main(int argc, char **argv) {
     QApplication app(argc, argv);
-    cutcell::gui::cutcellgui *window = new cutcell::gui::cutcellgui;
+    cutcellgui *window = new cutcellgui;
 
     window->show();
     return app.exec();

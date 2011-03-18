@@ -3,11 +3,7 @@
 
 #include <ui_cutcell.h>
 
-namespace cutcell {
-
-namespace gui {
-
-class cutcellgui : public QWidget, private Ui::cutcell
+class cutcellgui : public QMainWindow, private Ui::MainWindow
 {
     Q_OBJECT
 
@@ -19,8 +15,5 @@ public slots:
     void getInFile();
     void getOutFile();
 };
-
-} // namespace gui
-} // namespace cutcell
 
 #endif // CUTCELLGUI_HPP
