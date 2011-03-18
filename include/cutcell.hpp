@@ -38,11 +38,8 @@ namespace cutcell {
 // This is a filtered, Cartesian, quotient kernel.
 typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
 
-// We need a Polyhedron which can store the plane normals.
-typedef CGAL::Polyhedron_traits_with_normals_3<Kernel> Traits;
-
 // The remaining typedefs are just a shorthand...
-typedef CGAL::Polyhedron_3<Traits> Polyhedron;
+typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Kernel::Vector_3 Vector;
 typedef Kernel::Direction_3 Direction;
