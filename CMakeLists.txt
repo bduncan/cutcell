@@ -8,7 +8,7 @@ if ( COMMAND cmake_policy )
   cmake_policy( SET CMP0003 NEW )
 endif()
 
-find_package(CGAL QUIET COMPONENTS Core Qt3 )
+find_package(CGAL QUIET COMPONENTS Core )
 include(${CGAL_USE_FILE})
 
 if ( CGAL_FOUND )
@@ -35,29 +35,11 @@ if ( CGAL_FOUND )
     endif()
     install( TARGETS cutcelltest RUNTIME DESTINATION bin )
 
-    find_package(Qt3-patched)
-    if (QT3_FOUND AND CGAL_Qt3_FOUND)
-        set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
-        include_directories(BEFORE ${QT3_INCLUDE_DIR})
-        add_executable("visualization_SNC" "visualization_SNC.cpp")
-        add_to_cached_list(CGAL_EXECUTABLE_TARGETS "visualization_SNC")
-        # Link the executable to CGAL and third-party libraries
-        if ( CGAL_AUTO_LINK_ENABLED )
-          target_link_libraries("visualization_SNC" ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES} )
-        else()
-          target_link_libraries("visualization_SNC" ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT3_LIBRARIES})
-        endif()
-
-    else (QT3_FOUND AND CGAL_Qt3_FOUND)
-
-      message(STATUS "NOTICE: This demo requires CGAL and Qt3, and will not be compiled.")
-
-    endif (QT3_FOUND AND CGAL_Qt3_FOUND)
-
     find_package(Qt4 COMPONENTS QtCore QtGui REQUIRED)
     if (QT4_FOUND)
         include(${QT_USE_FILE})
-
+        set(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+        include_directories(BEFORE ${QT_INCLUDE_DIR})
         QT4_WRAP_UI(cutcelluih "cutcell.ui")
         QT4_WRAP_CPP(cutcellguimoc "include/cutcellgui.hpp")
         include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -65,7 +47,7 @@ if ( CGAL_FOUND )
         add_to_cached_list(CGAL_EXECUTABLE_TARGETS "cutcellgui")
 
         # Link the executable to CGAL and third-party libraries
-        target_link_libraries("cutcellgui" ${CGAL_LIBRARIES} ${CGAL_QT_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} cgns)
+        target_link_libraries("cutcellgui" ${CGAL_LIBRARIES} ${QT_LIBRARIES} cgns)
         install( TARGETS cutcellgui RUNTIME DESTINATION bin )
     else (QT4_FOUND)
         message(STATUS "NOTICE: This program requires Qt4, and will not be compiled.")
