@@ -64,7 +64,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="gridSizeXSpinBox"/>
+            <widget class="QSpinBox" name="gridSizeXSpinBox">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>99999</number>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QPushButton" name="cubicButton">
@@ -81,7 +88,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="gridSizeYSpinBox"/>
+            <widget class="QSpinBox" name="gridSizeYSpinBox">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>99999</number>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QLabel" name="gridSizeZLabel">
@@ -91,7 +105,14 @@
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="gridSizeZSpinBox"/>
+            <widget class="QSpinBox" name="gridSizeZSpinBox">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>99999</number>
+             </property>
+            </widget>
            </item>
           </layout>
          </item>

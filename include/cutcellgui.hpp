@@ -14,6 +14,7 @@ public slots:
     void generateSlot();
     void getInFile();
     void getOutFile();
+    void cubicGridSlot();
 };
 
 #endif // CUTCELLGUI_HPP
