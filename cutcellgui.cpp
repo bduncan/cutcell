@@ -44,7 +44,7 @@ void cutcellgui::getInFile()
         this,
         "Choose a file to open",
         QString::null,
-        QString::null);
+        "OFF files (*.off)");
 
     offFileLineEdit->setText( path );
 }
@@ -53,11 +53,11 @@ void cutcellgui::getOutFile()
 {
     QString path;
 
-    path = QFileDialog::getOpenFileName(
+    path = QFileDialog::getSaveFileName(
         this,
         "Choose a file to write",
         QString::null,
-        QString::null);
+        "CGNS files (*.cgns)");
 
     cgnsFileLineEdit->setText( path );
 }
