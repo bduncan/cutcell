@@ -243,7 +243,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             elements.push_back(element_index);
                             ++i;
                         }
-                        std::cerr << "End of this facet cycle. number of elements is " << (elements.size() - elements_end_index - 1) << std::endl;
+                        std::cerr << "End of facet cycle " << cells << ". number of elements is " << (elements.size() - elements_end_index - 1) << std::endl;
                         elements[elements_end_index] = NGON_n + elements.size() - elements_end_index - 1;
                         ++cells;
                     }
@@ -253,6 +253,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     // vertex size
     isize[0][0] = points_3.size();
     // cell size
+    assert(cells > 0);
     isize[1][0] = cells;
     // boundary size
     isize[2][0] = 0;
