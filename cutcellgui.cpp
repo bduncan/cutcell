@@ -30,10 +30,16 @@
 cutcellgui::cutcellgui(QWidget *parent) {
     setupUi(this);
 
-    connect(generateButton, SIGNAL(clicked()), this, SLOT(generateSlot()));
+    connect(cubicButton, SIGNAL(clicked()), this, SLOT(cubicGridSlot()));
     connect(offOpenButton, SIGNAL(clicked()), this, SLOT(getInFile()));
     connect(cgnsOpenButton, SIGNAL(clicked()), this, SLOT(getOutFile()));
-    connect(cubicButton, SIGNAL(clicked()), this, SLOT(cubicGridSlot()));
+    connect(generateButton, SIGNAL(clicked()), this, SLOT(generateSlot()));
+}
+
+void cutcellgui::cubicGridSlot() {
+    double Xsize = gridSizeXSpinBox->value();
+    gridSizeYSpinBox->setValue(Xsize);
+    gridSizeZSpinBox->setValue(Xsize);
 }
 
 void cutcellgui::getInFile()
@@ -85,12 +91,6 @@ void cutcellgui::generateSlot() {
 
     // Output the grid in CGNS format.
     grid.output_cgns_file(qPrintable(cgnsFileLineEdit->text()));
-}
-
-void cutcellgui::cubicGridSlot() {
-    double Xsize = gridSizeXSpinBox->value();
-    gridSizeYSpinBox->setValue(Xsize);
-    gridSizeZSpinBox->setValue(Xsize);
 }
 
 int main(int argc, char **argv) {
