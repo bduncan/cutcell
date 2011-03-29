@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
     boost::program_options::notify(vm);
 
-    if (vm.count("help")) {
+    if (vm.count("help") || !vm.count("x") || !vm.count("y") || !vm.count("z")) {
         std::cout << desc << "\n";
         return 1;
     }
