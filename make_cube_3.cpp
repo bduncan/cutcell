@@ -1,83 +1,30 @@
-/* Simple Polyhedron
+/* Simple Nef_olyhedron
  *
- * This program generates a simple polyhedron using the make_cube_3
- * function from the CGAL examples. This creates unit cubes with the
- * bottom left corner as the origin which are examples of the
- * Polyhedron_3 class.
- *
- * The main routine converts the cube from a simple Polyhedron to a
- * Nef_polyhedron and then writes the result in the Nef format.
- *
- * This program uses the exact_predicates_exact_constructions kernel
- * from CGAL which is recommended for manipulations using <double>
- * coordinates and is efficient for geometric operations.
+ * This program creates a simple Nef_polyhedron using the intersection method
+ * shown in examples/Nef_3/point_set_operations.cpp. The shape generated is a
+ * cube which is then output in Nef format.
  */
-#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
-#include <CGAL/Polyhedron_3.h>
-#include <CGAL/IO/Polyhedron_iostream.h>
+#include <CGAL/Gmpz.h>
+#include <CGAL/Extended_homogeneous.h>
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <iostream>
 
-template <class Poly>
-typename Poly::Halfedge_handle make_cube_3( Poly& P) {
-  // appends a unit cube of size [0,1]^3 to the polyhedron P. The cube
-  // is constructed using Euler operations and this routine is taken
-  // from the example code in section 25.3.7 of the CGAL Manual.
-  CGAL_precondition( P.is_valid());
-  typedef typename Poly::Point_3 Point;
-  typedef typename Poly::Halfedge_handle Halfedge_handle;
-  Halfedge_handle h = P.make_tetrahedron( Point( 1, 0, 0),
-                      Point( 0, 0, 1),
-                      Point( 0, 0, 0),
-                      Point( 0, 1, 0));
-
-  Halfedge_handle g = h->next()->opposite()->next();
-  P.split_edge( h->next());
-  P.split_edge( g->next());
-
-  P.split_edge( g);
-  h->next()->vertex()->point() = Point( 1, 0, 1);
-  g->next()->vertex()->point() = Point( 0, 1, 1);
-
-  g->opposite()->vertex()->point() = Point( 1, 1, 0);
-
-  Halfedge_handle f = P.split_facet( g->next(),
-                     g->next()->next()->next());
-
-  Halfedge_handle e = P.split_edge( f);
-  e->vertex()->point() = Point( 1, 1, 1);
-
-  P.split_facet( e, f->next()->next());
-  CGAL_postcondition( P.is_valid());
-  return h;
-}
-
-/* This is the start of the main program.  First we declare the CGAL
-   kernel we wish to use. In this case we will use the exact
-   predicates kernel. The Exact predicates exact constructions kernel
-   uses filtering. In non-degenerate scenarios it's faster than the
-   Homogeneous kernel. The most important advantage of the filtered
-   kernel is that it is a Cartesian kernel, which allows the proper
-   handling of OFF files using floating-point coordinates. */
-
-typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
-
-// Now create an example of the Polyhedron_3 class, together with the
-// half edge handle. These are needed to create cubes.
-typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
-typedef Polyhedron::Halfedge_handle Halfedge_handle;
-
-// Now create an example of the Nef_Polygon_3 class
-typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
+typedef CGAL::Extended_homogeneous<CGAL::Gmpz>  Kernel;
+typedef CGAL::Nef_polyhedron_3<Kernel>  Nef_polyhedron;
+typedef Kernel::Plane_3 Plane_3;
 
 int main() {
-  Polyhedron P; // P is a polyhedron
-  Halfedge_handle h = make_cube_3( P); // make a unit cube
 
-  Nef_polyhedron N(P); // construct N a Nef_Polyhedron from P
+    Nef_polyhedron N1(Plane_3( 1, 0, 0,-1));
+    Nef_polyhedron N2(Plane_3(-1, 0, 0,-1));
+    Nef_polyhedron N3(Plane_3( 0, 1, 0,-1));
+    Nef_polyhedron N4(Plane_3( 0,-1, 0,-1));
+    Nef_polyhedron N5(Plane_3( 0, 0, 1,-1));
+    Nef_polyhedron N6(Plane_3( 0, 0,-1,-1));
+    Nef_polyhedron Cube = N1 * N2 * N3 * N4 * N5 * N6;
 
-  // Output the Nef_polyhedron in the Nef file format.
-  std::cout << N;
-  return 0;
+    // Output the Nef_polyhedron in the Nef file format.
+    std::cout << Cube;
+    return 0;
 }
