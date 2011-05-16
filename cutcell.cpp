@@ -214,52 +214,16 @@ int Grid::output_cgns_file(std::string const& name) const {
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
                 if (cell_[x][y][z].type() == Fluid) {
                     // This is a cube.
+                    #ifndef NDEBUG
+                    std::cerr << "Processing fluid cell at " << x << " " << y << " " << z << std::endl;
                     int nodes = 0;
-                    bool first = true;
-                    Nef_polyhedron::Kernel::Direction_3 plane;
-                    Nef_polyhedron::Halffacet_const_iterator fi;
-                    int faces = 0;
-                    CGAL_forall_facets(fi, N_[x][y][z]) {
-                        bool reversed = false;
-                        ++faces;
-                        #ifndef NDEBUG
-                        std::cerr << "facet plane: " << fi->plane().orthogonal_direction() << "\topposite is: " << -fi->plane().orthogonal_direction() << std::endl;
-                        #endif
-                        if (first) {
-                            first = false;
-                            plane = fi->plane().orthogonal_direction();
-                        } else {
-                            if (plane != fi->plane().orthogonal_direction() && plane != -fi->plane().orthogonal_direction()) {
-                                continue;
-                            }
-                            reversed = plane == -fi->plane().orthogonal_direction();
-                        }
-                        Nef_polyhedron::Halffacet_cycle_const_iterator hfc;
-                        CGAL_forall_facet_cycles_of(hfc, fi) {
-                            Nef_polyhedron::SHalfedge_const_handle se(hfc);
-                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc(se);
-                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_end(hc);
-                            // Make sure the circulator starts at the vertex closest to the origin, so that we can ensure the two planes start at the correct vertices.
-                            Nef_polyhedron::Vector_3 min_distance = hc->source()->center_vertex()->point() - CGAL::ORIGIN;
-                            Nef_polyhedron::SHalfedge_around_facet_const_circulator min_se = hc;
-                            ++hc;
-                            CGAL_For_all(hc, hc_end) {
-                                Nef_polyhedron::Vector_3 distance = hc->source()->center_vertex()->point() - CGAL::ORIGIN;
-                                if (distance.squared_length() < min_distance.squared_length()) {
-                                    min_distance = distance;
-                                    min_se = hc;
-                                }
-                            }
-                            hc = min_se;
-                            #ifndef NDEBUG
-                            std::cerr << "Advanced hc by " << (&hc - &hc_end) << " places to start at " << hc->source()->center_vertex()->point() << std::endl;
-                            #endif
-                            hc_end = hc;
-                            // This is the unrolled macro CGAL_For_all from CGAL/circulator.h:348, modified to allow moving backwards.
-                            for (bool _circ_loop_flag = ! ::CGAL::is_empty_range( hc, hc_end); _circ_loop_flag; _circ_loop_flag = reversed ? ((hc) != (--hc_end)) : ((++hc) != (hc_end))) {
-                                Nef_polyhedron::Point_3 point((reversed ? hc_end : hc)->source()->center_vertex()->point());
+                    #endif
+                    for (unsigned dx = 0; dx < 2; ++dx)
+                        for (unsigned dy = 0; dy < 2; ++dy)
+                            for (unsigned dz = 0; dz < 2; ++dz) {
+                                Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
                                 #ifndef NDEBUG
-                                std::cerr << "SHalfedge from " << point << std::endl;
+                                std::cerr << "Fluid cell point at " << point << std::endl;
                                 #endif
                                 std::vector<Nef_polyhedron::Point_3>::iterator it;
                                 for (it = points_3.begin(); it != points_3.end(); ++it)
@@ -282,18 +246,14 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 std::cerr << "element index: " << element_index << std::endl;
                                 #endif
                                 hexa_8_elements.push_back(element_index + 1); // indices are 1-based.
+                                #ifndef NDEBUG
                                 ++nodes;
+                                #endif
                             }
-                        }
-                    }
-                    ++hexa_8_cells;
                     #ifndef NDEBUG
-                    std::cerr << "Facet plane had " << faces << " faces. Expected 6." << std::endl;
-                    std::cerr << x << " " << y << " " << z << " had " << nodes << " nodes." << std::endl;
+                    assert(nodes == 8);
                     #endif
-                    if (nodes != 8) {
-                        abort();
-                    }
+                    ++hexa_8_cells;
                 }
                 else if (cell_[x][y][z].type() == Cut) {
                     #ifndef NDEBUG
