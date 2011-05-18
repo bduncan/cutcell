@@ -189,6 +189,33 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
     out << big;
     return out;
 }
+
+template <class Element>
+static typename std::vector<Element>::difference_type find_or_insert_index_of(std::vector<Element>& points_3, Element const & point, std::vector<double>& xvec, std::vector<double>& yvec, std::vector<double>& zvec) {
+    typename std::vector<Element>::iterator it;
+    for (it = points_3.begin(); it != points_3.end(); ++it)
+        if (*it == point)
+            break;
+    if (it == points_3.end()) { // if point not in points_3
+        xvec.push_back(CGAL::to_double(point.x()));
+        yvec.push_back(CGAL::to_double(point.y()));
+        zvec.push_back(CGAL::to_double(point.z()));
+        points_3.push_back(point);
+        #ifndef NDEBUG
+        std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
+        #endif
+        // it may have been invalidated by push_back. Make sure we have an iterator at the new point.
+        it = points_3.end();
+        --it;
+    }
+    // Push the index of the element in the points_3 set into the connectivity list.
+    typename std::vector<Element>::difference_type element_index = std::distance(points_3.begin(), it);
+    #ifndef NDEBUG
+    std::cerr << "element index: " << element_index << std::endl;
+    #endif
+    return element_index;
+}
+
 int Grid::output_cgns_file(std::string const& name) const {
     int index_file = 0, index_base = 0, index_zone = 0;
     int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
@@ -225,27 +252,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 #ifndef NDEBUG
                                 std::cerr << "Fluid cell point at " << point << std::endl;
                                 #endif
-                                std::vector<Nef_polyhedron::Point_3>::iterator it;
-                                for (it = points_3.begin(); it != points_3.end(); ++it)
-                                    if (*it == point)
-                                        break;
-                                if (it == points_3.end()) { // if point not in points_3
-                                    xvec.push_back(CGAL::to_double(point.x()));
-                                    yvec.push_back(CGAL::to_double(point.y()));
-                                    zvec.push_back(CGAL::to_double(point.z()));
-                                    points_3.push_back(point);
-                                    #ifndef NDEBUG
-                                    std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
-                                    #endif
-                                    it = points_3.end();
-                                    --it;
-                                }
-                                // Push the index of the element in the points_3 set into the connectivity list.
-                                int element_index = std::distance(points_3.begin(), it);
-                                #ifndef NDEBUG
-                                std::cerr << "element index: " << element_index << std::endl;
-                                #endif
-                                hexa_8_elements.push_back(element_index + 1); // indices are 1-based.
+                                hexa_8_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
                                 #ifndef NDEBUG
                                 ++nodes;
                                 #endif
@@ -272,25 +279,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         for (Delaunay_triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); ++it) {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
-                                std::vector<Nef_polyhedron::Point_3>::iterator it;
-                                for (it = points_3.begin(); it != points_3.end(); ++it)
-                                    if (*it == point)
-                                        break;
-                                if (it == points_3.end()) { // if point not in points_3
-                                    xvec.push_back(CGAL::to_double(point.x()));
-                                    yvec.push_back(CGAL::to_double(point.y()));
-                                    zvec.push_back(CGAL::to_double(point.z()));
-                                    points_3.push_back(point);
-                                    std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
-                                    it = points_3.end();
-                                    --it;
-                                }
-                                // Push the index of the element in the points_3 set into the connectivity list.
-                                int element_index = std::distance(points_3.begin(), it);
-                                #ifndef NDEBUG
-                                std::cerr << "element index: " << element_index << std::endl;
-                                #endif
-                                tetra_4_elements.push_back(element_index + 1); // indices are 1-based.
+                                tetra_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tetra_4_cells;
                         }
