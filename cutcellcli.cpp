@@ -30,13 +30,13 @@ int main(int argc, char **argv) {
     double oX, oY, oZ, s;
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
-        ("help", "produce help message")
-        ("x", boost::program_options::value<int>(&NX), "grid size in X dimension")
-        ("y", boost::program_options::value<int>(&NY), "grid size in Y dimension")
-        ("z", boost::program_options::value<int>(&NZ), "grid size in Z dimension")
-        ("offset-x,ox", boost::program_options::value<double>(&oX)->default_value(0.0), "translation vector in X dimension")
-        ("offset-y,oy", boost::program_options::value<double>(&oY)->default_value(0.0), "translation vector in Y dimension")
-        ("offset-z,oz", boost::program_options::value<double>(&oZ)->default_value(0.0), "translation vector in Z dimension")
+        ("help,h", "produce help message")
+        ("size-x,X", boost::program_options::value<int>(&NX), "grid size in X dimension")
+        ("size-y,Y", boost::program_options::value<int>(&NY), "grid size in Y dimension")
+        ("size-z,Z", boost::program_options::value<int>(&NZ), "grid size in Z dimension")
+        ("offset-x,x", boost::program_options::value<double>(&oX)->default_value(0.0), "translation vector in X dimension")
+        ("offset-y,y", boost::program_options::value<double>(&oY)->default_value(0.0), "translation vector in Y dimension")
+        ("offset-z,z", boost::program_options::value<double>(&oZ)->default_value(0.0), "translation vector in Z dimension")
         ("scaling,s", boost::program_options::value<double>(&s)->default_value(1.0), "scale factor")
         ("input-file,I", boost::program_options::value<std::string>(), "Input file in OFF format (omit to read from stdin)")
         ("output-file,O", boost::program_options::value<std::string>(), "Output file in CGNS format (omit to write to stdout)")
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
     boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
     boost::program_options::notify(vm);
 
-    if (vm.count("help") || !vm.count("x") || !vm.count("y") || !vm.count("z")) {
+    if (vm.count("help") || !vm.count("size-x") || !vm.count("size-y") || !vm.count("size-z")) {
         std::cout << desc << "\n";
         return 1;
     }
