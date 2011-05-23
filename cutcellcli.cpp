@@ -55,13 +55,21 @@ int main(int argc, char **argv) {
 
     cutcell::Polyhedron P;
 
+    bool badbit = false;
     // Read the OFF format from the input file or stdin.
     if (vm.count("input-file")) {
         std::ifstream in(vm["input-file"].as<std::string>().c_str());
-        in >> P; // parse the file as a Polyhedron object.
+        CGAL::scan_OFF(in, P, true);
+        badbit = in.bad();
     } else {
-        std::cin >> P; // parse the file as a Polyhedron object.
+        CGAL::scan_OFF(std::cin, P, true);
+        badbit = std::cin.bad();
     }
+    if (badbit) {
+        std::cerr << "Input file does not contain a permissible polyhedral surface." << std::endl;
+        return 1;
+    }
+
     // Convert Polyhedron to Nef_polyhedron
     cutcell::Nef_polyhedron N1(P);
 
