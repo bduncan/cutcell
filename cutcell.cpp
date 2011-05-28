@@ -33,6 +33,7 @@
 #include <vector>
 #include <algorithm>
 #include <cassert>
+#include <string>
 
 namespace cutcell {
 
@@ -54,7 +55,7 @@ Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::exte
         for (V3NefIndex y = 0; y < Y; ++y)
             for (V3NefIndex z = 0; z < Z; ++z) {
                 N_[x][y][z] = UnitCube;
-                Aff_transformation Aff(TRANSLATION, Vector(int(x), int(y), int(z)));
+                Aff_transformation Aff(TRANSLATION, Vector(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
                 N_[x][y][z].transform(Aff);
             }
 };
@@ -217,24 +218,15 @@ static typename std::vector<Element>::difference_type find_or_insert_index_of(st
 }
 
 int Grid::output_cgns_file(std::string const& name) const {
-    int index_file = 0, index_base = 0, index_zone = 0;
-    int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
-    int index_section = 0;
     int hexa_8_cells = 0, tetra_4_cells = 0;
-    if (cg_open(name.c_str(), CG_MODE_WRITE, &index_file) != CG_OK) {
-        return 1;
-    }
-    if (cg_base_write(index_file, "Base", 3, 3, &index_base) != CG_OK) {
-        std::cerr << cg_get_error() << std::endl;
-        (void)cg_close(index_file);
-        return 1;
-    }
-    // populate x, y, z with the coordinates of each point.
-    std::vector<Nef_polyhedron::Point_3> points_3;
-
     // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
     // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
+    // The points_3 vector is the key for a naive implementation of a map.
     std::vector<double> xvec, yvec, zvec;
+    std::vector<Nef_polyhedron::Point_3> points_3;
+    // CGNS requires the indices into the xvec, yvec, zvec vectors to identify
+    // the nodes of the polyhedra (in this case only hexahedrons and
+    // tetrahedrons are used).
     std::vector<int> hexa_8_elements, tetra_4_elements;
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
@@ -251,11 +243,9 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
                                 #ifndef NDEBUG
                                 std::cerr << "Fluid cell point at " << point << std::endl;
-                                #endif
-                                hexa_8_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
-                                #ifndef NDEBUG
                                 ++nodes;
                                 #endif
+                                hexa_8_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                     #ifndef NDEBUG
                     assert(nodes == 8);
@@ -286,6 +276,17 @@ int Grid::output_cgns_file(std::string const& name) const {
                     }
                 }
             }
+    int index_file = 0, index_base = 0, index_zone = 0;
+    int index_coord_x = 0, index_coord_y = 0, index_coord_z = 0;
+    int index_section = 0;
+    if (cg_open(name.c_str(), CG_MODE_WRITE, &index_file) != CG_OK) {
+        return 1;
+    }
+    if (cg_base_write(index_file, "Base", 3, 3, &index_base) != CG_OK) {
+        std::cerr << cg_get_error() << std::endl;
+        (void)cg_close(index_file);
+        return 1;
+    }
     int isize[9] = {0};
     // vertex size
     isize[0] = points_3.size();
