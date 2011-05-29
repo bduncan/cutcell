@@ -40,7 +40,11 @@ namespace cutcell {
 typedef CGAL::Triangulation_3<cutcell::Kernel> Triangulation;
 typedef CGAL::Delaunay_triangulation_3<cutcell::Kernel> Delaunay_triangulation;
 
-Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {
+void Grid::cut(Nef_polyhedron const& N1) {
+    // Ensure that each multi_array is 3 dimensional
+    assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
+    // And that both arrays are the same shape.
+    assert(std::equal(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
     // Create the Unit Cube from the global string definition.
     Nef_polyhedron UnitCube;
     std::istringstream in(cube);
@@ -50,42 +54,47 @@ Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::exte
     assert(UnitCube.number_of_edges() == 12);
     assert(UnitCube.number_of_volumes() == 2);
 
-    // Copy and translate the cube for each point.
-    for (V3NefIndex x = 0; x < X; ++x)
-        for (V3NefIndex y = 0; y < Y; ++y)
-            for (V3NefIndex z = 0; z < Z; ++z) {
-                N_[x][y][z] = UnitCube;
-                Aff_transformation Aff(TRANSLATION, Vector(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
-                N_[x][y][z].transform(Aff);
-            }
-};
-void Grid::cut(Nef_polyhedron const& N1) {
-    // Ensure that each multi_array is 3 dimensional
-    assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
-    // And that both arrays are the same shape.
-    assert(std::equal(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
+                #ifndef NDEBUG
+                std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is a ";
+                #endif
                 // Compute the intersection of this part of the grid with the
                 // test cube.
-                Nef_polyhedron I = N_[x][y][z] - N1;
-                Polyhedron P;
-                // Convert this new cut Nef_polyhedron I into the Polyhedron P.
-                I.convert_to_polyhedron(P);
+                Nef_polyhedron I = UnitCube;
+                Aff_transformation Aff(TRANSLATION, Vector(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
+                I.transform(Aff);
+                Nef_polyhedron Nnew = I - N1;
 
                 // Set the type of the new cell.
-                if (I.is_empty())
+                if (Nnew.is_empty()) {
                     // No points, must be completely inside the solid.
                     cell_[x][y][z].type(Solid);
-                else if (I == N_[x][y][z])
+                    #ifndef NDEBUG
+                    std::cerr << "Solid";
+                    #endif
+                }
+                else if (Nnew == I) {
                     // Unchanged, must be completely outside the solid.
                     cell_[x][y][z].type(Fluid);
-                else
+                    #ifndef NDEBUG
+                    std::cerr << "Fluid";
+                    #endif
+                }
+                else {
                     // Something else, must be a cut cell.
                     cell_[x][y][z].type(Cut);
-                N_[x][y][z] = I;
+                    // Assign it to the grid.
+                    N_[x][y][z] = Nnew;
+                    #ifndef NDEBUG
+                    std::cerr << "Cut";
+                    #endif
+                }
 
+                #ifndef NDEBUG
+                std::cerr << " cell." << std::endl;
+                #endif
                 // Set the index pointer to the parent cell.
                 cell_[x][y][z].parent(Index_3(x, y, z));
                 if (cell_[x][y][z].type() == Fluid || cell_[x][y][z].type() == Cut) {
@@ -93,7 +102,7 @@ void Grid::cut(Nef_polyhedron const& N1) {
                     Nef_polyhedron::Vertex_const_iterator v;
 
                     // Calculate the centroid of the cell.
-                    CGAL_forall_vertices(v, I)
+                    CGAL_forall_vertices(v, Nnew)
                         points_3.push_back(v->point());
                     assert(points_3.size() >= 6);
                     cell_[x][y][z].centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
@@ -116,7 +125,7 @@ void Grid::cut(Nef_polyhedron const& N1) {
                     // Halffacets have halfedge_cycles
                     // halfedge_cycles are SHalfedges or one SHalfloop
                     Nef_polyhedron::Halffacet_const_iterator fi;
-                    CGAL_forall_facets(fi, I) {
+                    CGAL_forall_facets(fi, Nnew) {
                         Face newFace;
                         Nef_polyhedron::SHalfedge_const_handle h[3];
                         size_t i = 0;
