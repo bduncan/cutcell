@@ -19,13 +19,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <cutcellgui.hpp>
 #include <cutcell.hpp>
-#include <iostream>
-#include <fstream>
 #include <QApplication>
 #include <QtGui>
-#include <cutcellgui.hpp>
 #include <CGAL/IO/Polyhedron_iostream.h>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 cutcellgui::cutcellgui(QWidget *parent) {
     setupUi(this);
@@ -45,8 +46,7 @@ void cutcellgui::cubicGridSlot() {
     gridSizeZSpinBox->setValue(Xsize);
 }
 
-void cutcellgui::getInFile()
-{
+void cutcellgui::getInFile() {
     QString path;
 
     path = QFileDialog::getOpenFileName(
@@ -55,11 +55,10 @@ void cutcellgui::getInFile()
         QString::null,
         "OFF files (*.off)");
 
-    offFileLineEdit->setText( path );
+    offFileLineEdit->setText(path);
 }
 
-void cutcellgui::getOutFile()
-{
+void cutcellgui::getOutFile() {
     QString path;
 
     path = QFileDialog::getSaveFileName(
@@ -68,7 +67,7 @@ void cutcellgui::getOutFile()
         QString::null,
         "CGNS files (*.cgns)");
 
-    cgnsFileLineEdit->setText( path );
+    cgnsFileLineEdit->setText(path);
 }
 
 void cutcellgui::generateSlot() {
@@ -78,7 +77,7 @@ void cutcellgui::generateSlot() {
 
 void GenerateThread::run() {
     cutcell::Polyhedron P;
-    cutcellgui *p = (cutcellgui*)parent();
+    cutcellgui *p = reinterpret_cast<cutcellgui*>(parent());
     assert(p);
     // Store the values of the widgets' data now, before they can be changed.
     double transX = p->translationXSpinBox->value(),

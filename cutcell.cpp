@@ -328,6 +328,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         std::cerr << "Writing " << hexa_8_cells << " Fluid elements..." << std::endl;
         #endif
         assert(hexa_8_elements.size() >= hexa_8_cells);
+        assert(hexa_8_elements.size() / 8 == hexa_8_cells);
         if (cg_section_write(index_file, index_base, index_zone, "FluidGridElements", HEXA_8, 1, hexa_8_cells, /* nbndry = */ 0, &hexa_8_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
@@ -339,6 +340,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         std::cerr << "Writing " << tetra_4_cells << " Cut cell elements..." << std::endl;
         #endif
         assert(tetra_4_elements.size() >= tetra_4_cells);
+        assert(tetra_4_elements.size() / 4 == tetra_4_cells);
         if (cg_section_write(index_file, index_base, index_zone, "CutGridElements", TETRA_4, 1, tetra_4_cells, /* nbndry = */ 0, &tetra_4_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
