@@ -225,11 +225,12 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
 
 template <class Element>
 static typename std::vector<Element>::difference_type find_or_insert_index_of(std::vector<Element>& points_3, Element const & point, std::vector<double>& xvec, std::vector<double>& yvec, std::vector<double>& zvec) {
-    typename std::vector<Element>::iterator it;
-    for (it = points_3.begin(); it != points_3.end(); ++it)
+    // Iterating backwards might be faster, due to locality.
+    typename std::vector<Element>::reverse_iterator it;
+    for (it = points_3.rbegin(); it != points_3.rend(); ++it)
         if (*it == point)
             break;
-    if (it == points_3.end()) { // if point not in points_3
+    if (it == points_3.rend()) { // if point not in points_3
         xvec.push_back(CGAL::to_double(point.x()));
         yvec.push_back(CGAL::to_double(point.y()));
         zvec.push_back(CGAL::to_double(point.z()));
@@ -238,13 +239,26 @@ static typename std::vector<Element>::difference_type find_or_insert_index_of(st
         std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
         #endif
         // it may have been invalidated by push_back. Make sure we have an iterator at the new point.
-        it = points_3.end();
-        --it;
+        it = points_3.rbegin();
+        assert(*it == point);
     }
     // Push the index of the element in the points_3 set into the connectivity list.
-    typename std::vector<Element>::difference_type element_index = std::distance(points_3.begin(), it);
+    // Because std::vector has bidirectional random-access iterators, std::distance from rend will be negative and 1-based. Make sure it's positive.
+    typename std::vector<Element>::difference_type element_index = -std::distance(--points_3.rend(), it);
     #ifndef NDEBUG
+    // This is the alternative, potentially slower, algorithm for finding the location of point in points_3
+    // Test that it gets the same answer as the one above.
+    // For this we need a forward iterator...
+    typename std::vector<Element>::iterator itf;
+    for (itf = points_3.begin(); itf != points_3.end(); ++itf)
+        if (*itf == point)
+            break;
+    if (itf == points_3.end()) {
+        std::cerr << "Could not find point " << point << " in points_3 vector! Aborting..." << std::endl;
+        abort();
+    }
     std::cerr << "element index: " << element_index << std::endl;
+    assert(element_index == std::distance(points_3.begin(), itf));
     #endif
     return element_index;
 }
