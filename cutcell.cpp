@@ -26,6 +26,7 @@
 #include <CGAL/Triangulation_3.h>
 #include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/convex_decomposition_3.h>
+#include <CGAL/bounding_box.h>
 
 #include <list>
 #include <fstream>
@@ -54,9 +55,31 @@ void Grid::cut(Nef_polyhedron const& N1) {
     assert(UnitCube.number_of_edges() == 12);
     assert(UnitCube.number_of_volumes() == 2);
 
+    // Compute the iso-oriented bounding box of the solid.
+    std::list<Nef_polyhedron::Point_3> points_3;
+    Nef_polyhedron::Vertex_const_iterator v;
+    CGAL_forall_vertices(v, N1)
+        points_3.push_back(v->point());
+    Kernel::Iso_cuboid_3 c3 = CGAL::bounding_box(points_3.begin(), points_3.end());
+    c3 = Kernel::Iso_cuboid_3(floor(CGAL::to_double(c3.min_coord(0))),
+                              floor(CGAL::to_double(c3.min_coord(1))),
+                              floor(CGAL::to_double(c3.min_coord(2))),
+                              ceil(CGAL::to_double(c3.max_coord(0))),
+                              ceil(CGAL::to_double(c3.max_coord(1))),
+                              ceil(CGAL::to_double(c3.max_coord(2))));
+    #ifndef NDEBUG
+    std::cerr << "Bounding box of solid object: " << c3 << std::endl;
+    #endif
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
+                if (c3.has_on_unbounded_side(Nef_polyhedron::Point_3(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)))) {
+                    #ifndef NDEBUG
+                    std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is outside the bounding box and therefore Fluid." << std::endl;
+                    #endif
+                    cell_[x][y][z].type(Fluid);
+                    continue;
+                }
                 #ifndef NDEBUG
                 std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is a ";
                 #endif
