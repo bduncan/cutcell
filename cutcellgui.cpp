@@ -97,7 +97,12 @@ void GenerateThread::run() {
         return;
     }
     p->statusBarLabel->setText("Reading OFF...");
-    in >> P; // parse the file as a Nef_polyhedron object.
+    // parse the file as a Nef_polyhedron object.
+    CGAL::scan_OFF(in, P, true);
+    if (in.bad()) {
+        p->statusBarLabel->setText("Input file does not contain a permissible polyhedral surface.");
+        return;
+    }
     cutcell::Nef_polyhedron N1(P);
     // Transform the object accordingly.
     p->statusBarLabel->setText("Translating and scaling...");
