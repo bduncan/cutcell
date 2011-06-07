@@ -21,10 +21,8 @@
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Nef_polyhedron_3.h>
 #include <CGAL/Polyhedron_3.h>
-#include <CGAL/Polyhedron_traits_with_normals_3.h>
 #include <CGAL/IO/Nef_polyhedron_iostream_3.h>
 #include <iostream>
-#include <vector>
 #include <boost/multi_array.hpp>
 
 namespace cutcell {
@@ -42,7 +40,6 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel Kernel;
 typedef CGAL::Polyhedron_3<Kernel> Polyhedron;
 typedef CGAL::Nef_polyhedron_3<Kernel> Nef_polyhedron;
 typedef Kernel::Vector_3 Vector;
-typedef Kernel::Direction_3 Direction;
 typedef Kernel::Aff_transformation_3 Aff_transformation;
 
 // Export some useful CGAL symbols in this namespace.
@@ -174,72 +171,20 @@ sfaces     16\n\
 /* end Selective Nef complex */\n\
 ";
 
-// A description of the properties of one of the faces of a cell.
-class Face {
-    public:
-    Face() {}
-    Face(Kernel::Plane_3 normal, Kernel::Point_3 centroid, Kernel::FT area, bool fluid) : normal_(normal), centroid_(centroid), area_(area), fluid_(fluid) {}
-
-    Kernel::Plane_3 const& normal() const { return normal_; }
-    Kernel::Point_3 const& centroid() const { return centroid_; }
-    Kernel::FT const& area() const { return area_; }
-    bool fluid() const { return fluid_; }
-
-    void normal(Kernel::Plane_3 const& normal) { normal_ = normal; }
-    void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
-    void area(Kernel::FT const& area) { area_ = area; }
-    void fluid(bool fluid) { fluid_ = fluid; }
-
-    private:
-    Kernel::Plane_3 normal_;
-    Kernel::Point_3 centroid_;
-    Kernel::FT area_;
-    bool fluid_; // whether our neighbour is a fluid cell.
-};
-
 // Whether the cell is a simple solid or fluid cell, or whether it has been cut
 // by a solid object.
 enum Type { Solid, Fluid, Cut };
-
-// The ijk index of a cell in the Cartesian space.
-class Index_3 {
-    public:
-    Index_3() : i_(0), j_(0), k_(0) {}
-    Index_3(int i, int j, int k) : i_(i), j_(j), k_(k) {}
-    int i() const { return i_; }
-    int j() const { return j_; }
-    int k() const { return k_; }
-
-    private:
-    int i_, j_, k_;
-};
 
 // A description of the cell properties of one of the cut cells.
 class Cell {
     public:
     Cell() {}
     Type const& type() const { return type_; }
-    Kernel::Point_3 const& centroid() const { return centroid_; }
-    Kernel::FT const& volume() const { return volume_; }
-    Index_3 const& parent() const { return parent_; }
-    std::vector<Face> const& faces() const { return faces_; }
 
     void type(Type type) { type_ = type; }
-    void centroid(Kernel::Point_3 const& centroid) { centroid_ = centroid; }
-    void volume(Kernel::FT const& volume) { volume_ = volume; }
-    void parent(Index_3 const& parent) { parent_ = parent; }
-    void faces(std::vector<Face> const& faces) { faces_ = faces; }
-    void addFace(Face const& f) { faces_.push_back(f); }
 
     private:
-    // Cell properties
     Type type_;
-    Kernel::Point_3 centroid_;
-    Kernel::FT volume_;
-    Index_3 parent_; // I, J, K of parent cell.
-
-    // Face properties
-    std::vector<Face> faces_;
 };
 
 class Grid {

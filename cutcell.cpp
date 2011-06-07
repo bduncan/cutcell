@@ -22,8 +22,6 @@
 #include <cutcell.hpp>
 #include <cgnslib.h>
 #include <CGAL/IO/Polyhedron_VRML_2_ostream.h>
-#include <CGAL/centroid.h>
-#include <CGAL/Triangulation_3.h>
 #include <CGAL/Delaunay_triangulation_3.h>
 #include <CGAL/convex_decomposition_3.h>
 #include <CGAL/bounding_box.h>
@@ -38,7 +36,6 @@
 
 namespace cutcell {
 
-typedef CGAL::Triangulation_3<cutcell::Kernel> Triangulation;
 typedef CGAL::Delaunay_triangulation_3<cutcell::Kernel> Delaunay_triangulation;
 
 void Grid::cut(Nef_polyhedron const& N1) {
@@ -118,85 +115,9 @@ void Grid::cut(Nef_polyhedron const& N1) {
                 #ifndef NDEBUG
                 std::cerr << " cell." << std::endl;
                 #endif
-                // Set the index pointer to the parent cell.
-                cell_[x][y][z].parent(Index_3(x, y, z));
-                if (cell_[x][y][z].type() == Fluid || cell_[x][y][z].type() == Cut) {
-                    std::list<Nef_polyhedron::Point_3> points_3;
-                    Nef_polyhedron::Vertex_const_iterator v;
-
-                    // Calculate the centroid of the cell.
-                    CGAL_forall_vertices(v, Nnew)
-                        points_3.push_back(v->point());
-                    assert(points_3.size() >= 6);
-                    cell_[x][y][z].centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
-
-                    // Calculate the volume of the cell, using a Triangulated
-                    // volume and summing over tetrahedra.
-                    Triangulation T(points_3.begin(), points_3.end());
-                    assert(T.is_valid());
-                    Kernel::FT volume = 0.0;
-                    for (Triangulation::Finite_cells_iterator tcell = T.finite_cells_begin(); tcell != T.finite_cells_end(); ++tcell) {
-                        assert(T.is_cell(tcell));
-                        volume += T.tetrahedron(tcell).volume();
-                    }
-                    cell_[x][y][z].volume(volume);
-                    assert(cell_[x][y][z].volume() > 0.0); // TODO should also be able to put an upper bound on the volume.
-
-                    continue; // FIXME This stuff only works if the faces are triangular.
-                    // FIXME convert to iterator over halffacets of Nef_polyhedron I.
-                    // Nef_polyhedrons have Halffacets
-                    // Halffacets have halfedge_cycles
-                    // halfedge_cycles are SHalfedges or one SHalfloop
-                    Nef_polyhedron::Halffacet_const_iterator fi;
-                    CGAL_forall_facets(fi, Nnew) {
-                        Face newFace;
-                        Nef_polyhedron::SHalfedge_const_handle h[3];
-                        size_t i = 0;
-
-                        // circulate 3 halfedges => vertices
-                        //for (Nef_polyhedron::Halffacet_cycle_const_iterator hfi = fi->facet_cycles_begin(); hfi != fi->facet_cycles_end(); ++hfi) {
-                        Nef_polyhedron::Halffacet_cycle_const_iterator hfc;
-                        CGAL_forall_facet_cycles_of(hfc, fi) {
-                            assert(hfc.is_shalfedge());
-                            Nef_polyhedron::SHalfedge_const_handle se(hfc);
-                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc(se);
-                            Nef_polyhedron::SHalfedge_around_facet_const_circulator hc_end(hc);
-                            CGAL_For_all(hc, hc_end) {
-                                assert(i < sizeof(h)/sizeof(h[0]));
-                                h[i] = Nef_polyhedron::SHalfedge_const_handle(hc);
-                                std::cerr << "SHalfedge from " << h[i]->source()->point() << " to " << h[i]->target()->point() << std::endl;
-                                ++i;
-                            }
-                        }
-                        std::cerr << i << std::endl;
-                        if (i != 3)
-                            continue;
-                        assert(i == 3); // This should have been a triangular facet.
-
-                        // Compute the squared area of this triangular face.
-                        newFace.area(CGAL::squared_area(h[0]->source()->point(), h[1]->source()->point(), h[2]->source()->point()));
-                        assert(newFace.area() > 0.0); // TODO should also be able to put an upper bound on the area.
-
-                        // Store the plane normal of this face.
-                        newFace.normal(fi->plane());
-
-                        // Compute the centroid of this triangular face.
-                        points_3.clear();
-                        points_3.push_back(h[0]->source()->point());
-                        points_3.push_back(h[1]->source()->point());
-                        points_3.push_back(h[2]->source()->point());
-                        newFace.centroid(CGAL::centroid(points_3.begin(), points_3.end(), CGAL::Dimension_tag<0>()));
-
-                        newFace.fluid(false); // FIXME
-
-                        // Store this new face in the list of faces belonging
-                        // to this cell.
-                        cell_[x][y][z].addFace(newFace);
-                    }
-                }
             }
     }
-};
+}
 
 std::ostream& Grid::output_vrml(std::ostream& out) const {
     CGAL::VRML_2_ostream vrml_out(out);
@@ -211,6 +132,7 @@ std::ostream& Grid::output_vrml(std::ostream& out) const {
             }
     return out;
 }
+
 std::ostream& Grid::output_nef(std::ostream& out) const {
     Nef_polyhedron big;
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
@@ -391,6 +313,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     }
     return 0;
 }
+
 std::ostream& Grid::output_cgns(std::ostream& out) const {
     const std::string NAME("/tmp/temp.cgns");
 
