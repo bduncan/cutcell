@@ -174,6 +174,7 @@ sfaces     16\n\
 // Whether the cell is a simple solid or fluid cell, or whether it has been cut
 // by a solid object.
 enum Type { Solid, Fluid, Cut };
+static char const * const Typenames[] = { "Solid", "Fluid", "Cut" };
 
 // A description of the cell properties of one of the cut cells.
 class Cell {

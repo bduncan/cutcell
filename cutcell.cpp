@@ -82,9 +82,6 @@ void Grid::cut() {
                     cell_[x][y][z].type(Fluid);
                     continue;
                 }
-                #ifndef NDEBUG
-                std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is a ";
-                #endif
                 // Compute the intersection of this part of the grid with the
                 // test cube.
                 Nef_polyhedron I = UnitCube_;
@@ -96,29 +93,20 @@ void Grid::cut() {
                 if (Nnew.is_empty()) {
                     // No points, must be completely inside the solid.
                     cell_[x][y][z].type(Solid);
-                    #ifndef NDEBUG
-                    std::cerr << "Solid";
-                    #endif
                 }
                 else if (Nnew == I) {
                     // Unchanged, must be completely outside the solid.
                     cell_[x][y][z].type(Fluid);
-                    #ifndef NDEBUG
-                    std::cerr << "Fluid";
-                    #endif
                 }
                 else {
                     // Something else, must be a cut cell.
                     cell_[x][y][z].type(Cut);
                     // Assign it to the grid.
                     N_[x][y][z] = Nnew;
-                    #ifndef NDEBUG
-                    std::cerr << "Cut";
-                    #endif
                 }
 
                 #ifndef NDEBUG
-                std::cerr << " cell." << std::endl;
+                std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is a " << Typenames[cell_[x][y][z].type()] << " cell." << std::endl;
                 #endif
             }
     }
