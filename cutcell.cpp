@@ -38,24 +38,29 @@ namespace cutcell {
 
 typedef CGAL::Delaunay_triangulation_3<cutcell::Kernel> Delaunay_triangulation;
 
-void Grid::cut(Nef_polyhedron const& N1) {
+Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {
     // Ensure that each multi_array is 3 dimensional
     assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
     // And that both arrays are the same shape.
     assert(std::equal(N_.shape(), N_.shape() + N_.num_dimensions(), cell_.shape()));
     // Create the Unit Cube from the global string definition.
-    Nef_polyhedron UnitCube;
     std::istringstream in(cube);
-    in >> UnitCube;
-    assert(UnitCube.number_of_vertices() == 8);
-    assert(UnitCube.number_of_facets() == 6);
-    assert(UnitCube.number_of_edges() == 12);
-    assert(UnitCube.number_of_volumes() == 2);
+    in >> UnitCube_;
+    assert(UnitCube_.number_of_vertices() == 8);
+    assert(UnitCube_.number_of_facets() == 6);
+    assert(UnitCube_.number_of_edges() == 12);
+    assert(UnitCube_.number_of_volumes() == 2);
+}
 
+void Grid::addSolid(Nef_polyhedron const& N) {
+    N1_ += N;
+}
+
+void Grid::cut() {
     // Compute the iso-oriented bounding box of the solid.
     std::list<Nef_polyhedron::Point_3> points_3;
     Nef_polyhedron::Vertex_const_iterator v;
-    CGAL_forall_vertices(v, N1)
+    CGAL_forall_vertices(v, N1_)
         points_3.push_back(v->point());
     Kernel::Iso_cuboid_3 c3 = CGAL::bounding_box(points_3.begin(), points_3.end());
     c3 = Kernel::Iso_cuboid_3(floor(CGAL::to_double(c3.min_coord(0))),
@@ -82,10 +87,10 @@ void Grid::cut(Nef_polyhedron const& N1) {
                 #endif
                 // Compute the intersection of this part of the grid with the
                 // test cube.
-                Nef_polyhedron I = UnitCube;
+                Nef_polyhedron I = UnitCube_;
                 Aff_transformation Aff(TRANSLATION, Vector(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
                 I.transform(Aff);
-                Nef_polyhedron Nnew = I - N1;
+                Nef_polyhedron Nnew = I - N1_;
 
                 // Set the type of the new cell.
                 if (Nnew.is_empty()) {

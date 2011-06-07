@@ -118,7 +118,8 @@ void GenerateThread::run() {
 
     // Cut the grid to the object.
     p->statusBarLabel->setText("Cutting...");
-    grid.cut(N1);
+    grid.addSolid(N1);
+    grid.cut();
 
     // Output the grid in CGNS format.
     p->statusBarLabel->setText("Writing CGNS...");

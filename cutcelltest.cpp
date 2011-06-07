@@ -42,7 +42,8 @@ int main() {
     cutcell::Grid grid(NX, NY, NZ);
 
     // Cut the grid to the test cube.
-    grid.cut(N1);
+    grid.addSolid(N1);
+    grid.cut();
 
     // Output the grid in NEF format.
     std::cout << cutcell::GridFormat(cutcell::GridFormat::OUTPUT_CGNS) << grid << std::endl;

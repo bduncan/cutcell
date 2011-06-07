@@ -84,7 +84,8 @@ int main(int argc, char **argv) {
     cutcell::Grid grid(NX, NY, NZ);
 
     // Cut the grid to the object.
-    grid.cut(N1);
+    grid.addSolid(N1);
+    grid.cut();
 
     // Output the grid in CGNS format.
     if (vm.count("output-file"))

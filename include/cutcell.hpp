@@ -194,8 +194,9 @@ class Grid {
     public:
     typedef boost::multi_array<Nef_polyhedron, 3> V3Nef;
     typedef boost::multi_array<Cell, 3> V3Cell;
-    Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {};
-    void cut(Nef_polyhedron const&);
+    Grid(int, int, int);
+    void addSolid(Nef_polyhedron const&);
+    void cut();
     int output_cgns_file(std::string const &) const;
     V3Nef const& grid() const { return N_; }
     V3Cell const& cell() const { return cell_; }
@@ -209,6 +210,8 @@ class Grid {
     typedef V3Cell::index V3CellIndex;
     V3Nef N_;
     V3Cell cell_;
+    Nef_polyhedron UnitCube_;
+    Nef_polyhedron N1_;
     static const int alloc_;
     DISALLOW_COPY_AND_ASSIGN(Grid);
 };
