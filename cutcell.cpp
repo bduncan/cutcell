@@ -26,7 +26,6 @@
 #include <CGAL/convex_decomposition_3.h>
 #include <CGAL/bounding_box.h>
 
-#include <list>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -53,15 +52,30 @@ Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::exte
 }
 
 void Grid::addSolid(Nef_polyhedron const& N) {
-    N1_ += N;
+    #ifndef NDEBUG
+    std::cerr << "Adding solid with " << N.number_of_vertices() << " vertices." << std::endl;
+    std::cerr << "Internal solid has " << N1_.number_of_vertices() << " vertices." << std::endl;
+    #endif
+    if (N1_.is_empty()) {
+        N1_ = N;
+    }
+    else {
+        N1_ += N;
+    }
+    #ifndef NDEBUG
+    std::cerr << "After union, internal solid has " << N1_.number_of_vertices() << " vertices." << std::endl;
+    #endif
 }
 
 void Grid::cut() {
     // Compute the iso-oriented bounding box of the solid.
-    std::list<Nef_polyhedron::Point_3> points_3;
+    std::vector<Nef_polyhedron::Point_3> points_3;
+    points_3.reserve(N1_.number_of_vertices());
+    assert(points_3.size() == 0);
     Nef_polyhedron::Vertex_const_iterator v;
     CGAL_forall_vertices(v, N1_)
         points_3.push_back(v->point());
+    assert(points_3.size() == N1_.number_of_vertices());
     Kernel::Iso_cuboid_3 c3 = CGAL::bounding_box(points_3.begin(), points_3.end());
     c3 = Kernel::Iso_cuboid_3(floor(CGAL::to_double(c3.min_coord(0))),
                               floor(CGAL::to_double(c3.min_coord(1))),
@@ -70,7 +84,7 @@ void Grid::cut() {
                               ceil(CGAL::to_double(c3.max_coord(1))),
                               ceil(CGAL::to_double(c3.max_coord(2))));
     #ifndef NDEBUG
-    std::cerr << "Bounding box of solid object: " << c3 << std::endl;
+    std::cerr << "Begin cutting. Bounding box of solid object: " << c3 << std::endl;
     #endif
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
@@ -79,15 +93,17 @@ void Grid::cut() {
                     #ifndef NDEBUG
                     std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is outside the bounding box and therefore Fluid." << std::endl;
                     #endif
+                    // This is kind of awkward. This code is repeated below in the Fluid path.
                     cell_[x][y][z].type(Fluid);
+                    ++nCells_[Fluid];
                     continue;
                 }
                 // Compute the intersection of this part of the grid with the
                 // test cube.
-                Nef_polyhedron I = UnitCube_;
+                Nef_polyhedron I(UnitCube_);
                 Aff_transformation Aff(TRANSLATION, Vector(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)));
                 I.transform(Aff);
-                Nef_polyhedron Nnew = I - N1_;
+                Nef_polyhedron Nnew(I - N1_);
 
                 // Set the type of the new cell.
                 if (Nnew.is_empty()) {
@@ -113,6 +129,13 @@ void Grid::cut() {
                 #endif
             }
     }
+    #ifndef NDEBUG
+    std::cerr << "Finished cutting. Grid has:" << std::endl;
+    for (unsigned i = 0; i < NUM_TYPES; ++i) {
+        std::cerr << nCells_[i] << " " << Typenames[i] << " cells." << std::endl;
+    }
+    std::cerr << std::endl;
+    #endif
 }
 
 std::ostream& Grid::output_vrml(std::ostream& out) const {
@@ -186,12 +209,37 @@ int Grid::output_cgns_file(std::string const& name) const {
     // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
     // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
     // The points_3 vector is the key for a naive implementation of a map.
+
     std::vector<double> xvec, yvec, zvec;
     std::vector<Nef_polyhedron::Point_3> points_3;
+    // Try to save time later by allocating the space we need now.
+    // There are approximately X*Y*Z Fluid points plus twice the number of solid points (one on the solid, one on the cut cell boundary)
+    unsigned points_capacity = (N_.shape()[0] + 1) * (N_.shape()[1] + 1) * (N_.shape()[2] + 1) + 2 * N1_.number_of_vertices();
+    #ifndef NDEBUG
+    std::cerr << "Grid extent (size + 1) is " << (N_.shape()[0] + 1) << " x " << (N_.shape()[1] + 1) << " x " << (N_.shape()[2] + 1) << " = " << ((N_.shape()[0] + 1) * (N_.shape()[1] + 1) * (N_.shape()[2] + 1)) << " vertices." << std::endl;
+    std::cerr << "Solid has " << N1_.number_of_vertices() << " points (expecting twice this number of output vertices)." << std::endl;
+    std::cerr << "Pre-allocating " << (3 * sizeof(double) * points_capacity) << " bytes for double points." << std::endl;
+    #endif
+    xvec.reserve(points_capacity);
+    yvec.reserve(points_capacity);
+    zvec.reserve(points_capacity);
+    #ifndef NDEBUG
+    std::cerr << "Pre-allocating " << (sizeof(Nef_polyhedron::Point_3) * points_capacity) << " bytes for Nef_polyhedron::Point_3s." << std::endl;
+    #endif
+    points_3.reserve(points_capacity);
+
     // CGNS requires the indices into the xvec, yvec, zvec vectors to identify
     // the nodes of the polyhedra (in this case only hexahedrons and
     // tetrahedrons are used).
     std::vector<int> hexa_8_elements, tetra_4_elements;
+    unsigned hexa_8_capacity = 8 * N_.shape()[0] * N_.shape()[1] * N_.shape()[2], tetra_4_capacity = 4 * N1_.number_of_vertices();
+    #ifndef NDEBUG
+    std::cerr << "Pre-allocating " << (sizeof(int) * hexa_8_capacity) << " bytes for HEXA_8 elements." << std::endl;
+    std::cerr << "Pre-allocating " << (sizeof(int) * tetra_4_capacity) << " bytes for TETRA_4 elements." << std::endl;
+    #endif
+    hexa_8_elements.reserve(hexa_8_capacity);
+    tetra_4_elements.reserve(tetra_4_capacity);
+
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
@@ -280,7 +328,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     }
     if (hexa_8_cells > 0) {
         #ifndef NDEBUG
-        std::cerr << "Writing " << hexa_8_cells << " Fluid elements..." << std::endl;
+        std::cerr << "Writing " << hexa_8_cells << " Fluid elements with " << hexa_8_elements.size() << " nodes..." << std::endl;
         #endif
         assert(hexa_8_elements.size() >= hexa_8_cells);
         assert(hexa_8_elements.size() / 8 == hexa_8_cells);
@@ -292,7 +340,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     }
     if (tetra_4_cells > 0) {
         #ifndef NDEBUG
-        std::cerr << "Writing " << tetra_4_cells << " Cut cell elements..." << std::endl;
+        std::cerr << "Writing " << tetra_4_cells << " Cut cell elements with " << tetra_4_elements.size() << " nodes..." << std::endl;
         #endif
         assert(tetra_4_elements.size() >= tetra_4_cells);
         assert(tetra_4_elements.size() / 4 == tetra_4_cells);
