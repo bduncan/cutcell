@@ -173,7 +173,8 @@ sfaces     16\n\
 
 // Whether the cell is a simple solid or fluid cell, or whether it has been cut
 // by a solid object.
-enum Type { Solid, Fluid, Cut };
+// NUM_TYPES must be the length of the usable types in the enum.
+enum Type { Solid, Fluid, Cut, NUM_TYPES };
 static char const * const Typenames[] = { "Solid", "Fluid", "Cut" };
 
 // A description of the cell properties of one of the cut cells.
@@ -213,6 +214,7 @@ class Grid {
     V3Cell cell_;
     Nef_polyhedron UnitCube_;
     Nef_polyhedron N1_;
+    unsigned nCells_[NUM_TYPES];
     static const int alloc_;
     DISALLOW_COPY_AND_ASSIGN(Grid);
 };

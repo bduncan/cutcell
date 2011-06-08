@@ -38,7 +38,7 @@ namespace cutcell {
 
 typedef CGAL::Delaunay_triangulation_3<cutcell::Kernel> Delaunay_triangulation;
 
-Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]) {
+Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]), nCells_(), N1_() {
     // Ensure that each multi_array is 3 dimensional
     assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
     // And that both arrays are the same shape.
@@ -93,16 +93,19 @@ void Grid::cut() {
                 if (Nnew.is_empty()) {
                     // No points, must be completely inside the solid.
                     cell_[x][y][z].type(Solid);
+                    ++nCells_[Solid];
                 }
                 else if (Nnew == I) {
                     // Unchanged, must be completely outside the solid.
                     cell_[x][y][z].type(Fluid);
+                    ++nCells_[Fluid];
                 }
                 else {
                     // Something else, must be a cut cell.
                     cell_[x][y][z].type(Cut);
                     // Assign it to the grid.
                     N_[x][y][z] = Nnew;
+                    ++nCells_[Cut];
                 }
 
                 #ifndef NDEBUG
