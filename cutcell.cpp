@@ -77,19 +77,21 @@ void Grid::cut() {
         points_3.push_back(v->point());
     assert(points_3.size() == N1_.number_of_vertices());
     Kernel::Iso_cuboid_3 c3 = CGAL::bounding_box(points_3.begin(), points_3.end());
-    c3 = Kernel::Iso_cuboid_3(floor(CGAL::to_double(c3.min_coord(0))),
-                              floor(CGAL::to_double(c3.min_coord(1))),
-                              floor(CGAL::to_double(c3.min_coord(2))),
-                              ceil(CGAL::to_double(c3.max_coord(0))),
-                              ceil(CGAL::to_double(c3.max_coord(1))),
-                              ceil(CGAL::to_double(c3.max_coord(2))));
+    std::vector<int> bb;
+    bb.push_back(floor(CGAL::to_double(c3.min_coord(0))));
+    bb.push_back(floor(CGAL::to_double(c3.min_coord(1))));
+    bb.push_back(floor(CGAL::to_double(c3.min_coord(2))));
+    bb.push_back(ceil(CGAL::to_double(c3.max_coord(0))));
+    bb.push_back(ceil(CGAL::to_double(c3.max_coord(1))));
+    bb.push_back(ceil(CGAL::to_double(c3.max_coord(2))));
     #ifndef NDEBUG
-    std::cerr << "Begin cutting. Bounding box of solid object: " << c3 << std::endl;
+    std::cerr << "Begin cutting. Bounding box of solid object: " << bb[0] << " " << bb[1] << " " << bb[2] << ", "
+                                                                 << bb[3] << " " << bb[4] << " " << bb[5] << std::endl;
     #endif
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                if (c3.has_on_unbounded_side(Nef_polyhedron::Point_3(static_cast<int>(x), static_cast<int>(y), static_cast<int>(z)))) {
+                if (x < bb[0] || y < bb[1] || z < bb[2] || x >= bb[3] || y >= bb[4] || z >= bb[5]) {
                     #ifndef NDEBUG
                     std::cerr << "Grid cell at " << x << ", " << y << ", " << z << " is outside the bounding box and therefore Fluid." << std::endl;
                     #endif
