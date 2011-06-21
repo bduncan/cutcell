@@ -476,6 +476,13 @@ int Grid::output_cgns_file(std::string const& name) const {
             return 1;
         }
     }
+    #ifndef NDEBUG
+    std::cerr << "Pre-allocated " << hexa_8_capacity << " sizeof(int)s for HEXA_8, actually used " << hexa_8_elements.size() << "." << std::endl;
+    std::cerr << "Pre-allocated " << tetra_4_capacity << " sizeof(int)s for TETRA_4, actually used " << tetra_4_elements.size() << "." << std::endl;
+    std::cerr << "Pre-allocated " << quad_4_capacity << " sizeof(int)s for quad_4, actually used " << quad_4_elements.size() << "." << std::endl;
+    std::cerr << "Pre-allocated " << points_capacity << " sizeof(int)s for each points vector, actually used " << xvec.size() << "." << std::endl;
+    #endif
+
     if (cg_close(index_file) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         return 1;
