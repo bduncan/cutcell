@@ -354,7 +354,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         #endif
         assert(tetra_4_elements.size() >= tetra_4_cells);
         assert(tetra_4_elements.size() / 4 == tetra_4_cells);
-        if (cg_section_write(index_file, index_base, index_zone, "2_CutGridElements", TETRA_4, 1, tetra_4_cells, /* nbndry = */ 0, &tetra_4_elements[0], &index_section) != CG_OK) {
+        if (cg_section_write(index_file, index_base, index_zone, "2_CutGridElements", TETRA_4, hexa_8_cells + 1, hexa_8_cells + tetra_4_cells, /* nbndry = */ 0, &tetra_4_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
             return 1;
