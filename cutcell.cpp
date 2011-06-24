@@ -214,11 +214,15 @@ int Grid::output_cgns_file(std::string const& name) const {
 
     std::vector<double> xvec, yvec, zvec;
     std::vector<Nef_polyhedron::Point_3> points_3;
-    // Try to save time later by allocating the space we need now.
+    // Try to save time later by allocating the space we need now. For this we need the volume and area of the domain:
+    unsigned const cell_area = 2 * ((N_.shape()[0] * N_.shape()[1]) + (N_.shape()[1] * N_.shape()[2]) + (N_.shape()[2] * N_.shape()[0]));
+    unsigned const cell_volume = N_.shape()[0] * N_.shape()[1] * N_.shape()[2];
+    unsigned const points_area = 2 * (((N_.shape()[0] + 1) * (N_.shape()[1] + 1)) + ((N_.shape()[1] + 1) * (N_.shape()[2] + 1)) + ((N_.shape()[2] + 1) * (N_.shape()[0] + 1)));
+    unsigned const points_volume = (N_.shape()[0] + 1) * (N_.shape()[1] + 1) * (N_.shape()[2] + 1);
     // There are approximately X*Y*Z Fluid points plus twice the number of solid points (one on the solid, one on the cut cell boundary)
-    unsigned points_capacity = (N_.shape()[0] + 1) * (N_.shape()[1] + 1) * (N_.shape()[2] + 1) + 2 * N1_.number_of_vertices();
+    unsigned points_capacity = points_volume + 2 * N1_.number_of_vertices();
     #ifndef NDEBUG
-    std::cerr << "Grid extent (size + 1) is " << (N_.shape()[0] + 1) << " x " << (N_.shape()[1] + 1) << " x " << (N_.shape()[2] + 1) << " = " << ((N_.shape()[0] + 1) * (N_.shape()[1] + 1) * (N_.shape()[2] + 1)) << " vertices." << std::endl;
+    std::cerr << "Grid extent (size + 1) is " << (N_.shape()[0] + 1) << " x " << (N_.shape()[1] + 1) << " x " << (N_.shape()[2] + 1) << " = " << points_volume << " vertices." << std::endl;
     std::cerr << "Solid has " << N1_.number_of_vertices() << " points (expecting twice this number of output vertices)." << std::endl;
     std::cerr << "Pre-allocating " << (3 * sizeof(double) * points_capacity) << " bytes for double points." << std::endl;
     #endif
@@ -234,7 +238,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     // the nodes of the polyhedra (in this case only hexahedrons and
     // tetrahedrons are used).
     std::vector<int> hexa_8_elements, tetra_4_elements;
-    unsigned hexa_8_capacity = 8 * N_.shape()[0] * N_.shape()[1] * N_.shape()[2], tetra_4_capacity = 4 * N1_.number_of_vertices();
+    unsigned hexa_8_capacity = 8 * cell_volume, tetra_4_capacity = 4 * N1_.number_of_vertices();
     #ifndef NDEBUG
     std::cerr << "Pre-allocating " << (sizeof(int) * hexa_8_capacity) << " bytes for HEXA_8 elements." << std::endl;
     std::cerr << "Pre-allocating " << (sizeof(int) * tetra_4_capacity) << " bytes for TETRA_4 elements." << std::endl;
@@ -244,7 +248,7 @@ int Grid::output_cgns_file(std::string const& name) const {
 
     // For the Fluid boundary, we write QUAD_4 elements.
     std::vector<int> quad_4_elements;
-    unsigned quad_4_capacity = 4 * 2 * ((N_.shape()[0] * N_.shape()[1]) + (N_.shape()[1] * N_.shape()[2]) + (N_.shape()[2] * N_.shape()[0]));
+    unsigned quad_4_capacity = 4 * cell_area;
     #ifndef NDEBUG
     std::cerr << "Pre-allocating " << (sizeof(int) * quad_4_capacity) << " bytes for QUAD_4 elements." << std::endl;
     #endif
