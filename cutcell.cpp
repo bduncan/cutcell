@@ -342,7 +342,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         #endif
         assert(hexa_8_elements.size() >= hexa_8_cells);
         assert(hexa_8_elements.size() / 8 == hexa_8_cells);
-        if (cg_section_write(index_file, index_base, index_zone, "FluidGridElements", HEXA_8, 1, hexa_8_cells, /* nbndry = */ 0, &hexa_8_elements[0], &index_section) != CG_OK) {
+        if (cg_section_write(index_file, index_base, index_zone, "1_FluidGridElements", HEXA_8, 1, hexa_8_cells, /* nbndry = */ 0, &hexa_8_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
             return 1;
@@ -354,7 +354,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         #endif
         assert(tetra_4_elements.size() >= tetra_4_cells);
         assert(tetra_4_elements.size() / 4 == tetra_4_cells);
-        if (cg_section_write(index_file, index_base, index_zone, "CutGridElements", TETRA_4, 1, tetra_4_cells, /* nbndry = */ 0, &tetra_4_elements[0], &index_section) != CG_OK) {
+        if (cg_section_write(index_file, index_base, index_zone, "2_CutGridElements", TETRA_4, 1, tetra_4_cells, /* nbndry = */ 0, &tetra_4_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
             return 1;
@@ -466,7 +466,7 @@ int Grid::output_cgns_file(std::string const& name) const {
         #ifndef NDEBUG
         std::cerr << "Writing " << (quad_4_elements.size() / 4) << " Boundary face elements with " << quad_4_elements.size() << " nodes..." << std::endl;
         #endif
-        if (cg_section_write(index_file, index_base, index_zone, "BoundaryElements", QUAD_4, 1, quad_4_elements.size() / 4, /* nbndry = */ 0, &quad_4_elements[0], &index_section) != CG_OK) {
+        if (cg_section_write(index_file, index_base, index_zone, "3_BoundaryElements", QUAD_4, 1, quad_4_elements.size() / 4, /* nbndry = */ 0, &quad_4_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
             return 1;
