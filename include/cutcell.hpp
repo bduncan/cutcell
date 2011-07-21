@@ -210,7 +210,7 @@ class Grid {
     static int alloc() { return alloc_; }
     typedef V3Nef::index V3NefIndex;
     typedef V3Cell::index V3CellIndex;
-    V3Nef N_;
+    mutable V3Nef N_; // This needs to be mutable because Nef_polyhedron_3::convert_inner_shell_to_polyhedron is not const in CGAL 3.7.
     V3Cell cell_;
     Nef_polyhedron UnitCube_;
     Nef_polyhedron N1_;

@@ -121,6 +121,8 @@ void Grid::cut() {
                 else {
                     // Something else, must be a cut cell.
                     cell_[x][y][z].type(Cut);
+                    // Ensure the polyhedron is convex.
+                    CGAL::convex_decomposition_3(Nnew);
                     // Assign it to the grid.
                     N_[x][y][z] = Nnew;
                     ++nCells_[Cut];
@@ -254,6 +256,10 @@ int Grid::output_cgns_file(std::string const& name) const {
     #endif
     quad_4_elements.reserve(quad_4_capacity);
 
+    // We should store the Delaunay_triangulation of the Cut cells to ensure that we get the same answer for both the volume and the boundary.
+    typedef boost::multi_array<Delaunay_triangulation, 3> V3Tri;
+    V3Tri T(boost::extents[N_.shape()[0]][N_.shape()[1]][N_.shape()[2]]);
+
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y)
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
@@ -282,8 +288,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                     #ifndef NDEBUG
                     std::cerr << "Processing cut cell at " << x << " " << y << " " << z << std::endl;
                     #endif
-                    Nef_polyhedron N(N_[x][y][z]);
-                    CGAL::convex_decomposition_3(N);
+                    Nef_polyhedron & N = N_[x][y][z];
                     // the first volume is the outer volume, which is ignored in the decomposition
                     Nef_polyhedron::Volume_const_iterator vit = ++N.volumes_begin();
                     for ( ; vit != N.volumes_end(); ++vit) {
@@ -291,8 +296,8 @@ int Grid::output_cgns_file(std::string const& name) const {
                             continue;
                         Polyhedron P;
                         N.convert_inner_shell_to_polyhedron(vit->shells_begin(), P);
-                        Delaunay_triangulation T(P.points_begin(), P.points_end());
-                        for (Delaunay_triangulation::Finite_cells_iterator it = T.finite_cells_begin(); it != T.finite_cells_end(); ++it) {
+                        T[x][y][z].insert(P.points_begin(), P.points_end());
+                        for (Delaunay_triangulation::Finite_cells_iterator it = T[x][y][z].finite_cells_begin(); it != T[x][y][z].finite_cells_end(); ++it) {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 tetra_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
