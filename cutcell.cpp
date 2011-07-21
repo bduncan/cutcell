@@ -379,18 +379,18 @@ int Grid::output_cgns_file(std::string const& name) const {
     for (V3NefIndex x = 0; x <= N_.shape()[0]; x += N_.shape()[0]) { // x = [0, NX]
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y) {
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                assert(cell_[0][y][z].type() == Fluid);
-                assert(cell_[N_.shape()[0]-1][y][z].type() == Fluid);
-                for (unsigned dy = 0; dy < 2; ++dy) {
-                    for (unsigned dz = 0; dz < 2; ++dz) {
-                        Nef_polyhedron::Point_3 point(static_cast<double>(x), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
-                        #ifndef NDEBUG
-                        std::cerr << "Fluid cell boundary point at " << point << std::endl;
-                        #endif
-                        quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                if (cell_[x][y][z].type() == Fluid) {
+                    for (unsigned dy = 0; dy < 2; ++dy) {
+                        for (unsigned dz = 0; dz < 2; ++dz) {
+                            Nef_polyhedron::Point_3 point(static_cast<double>(x), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
+                            #ifndef NDEBUG
+                            std::cerr << "Fluid cell boundary point at " << point << std::endl;
+                            #endif
+                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                        }
                     }
+                    ++quad_4_faces;
                 }
-                ++quad_4_faces;
             }
         }
         quad_4_face_range.clear();
@@ -411,18 +411,18 @@ int Grid::output_cgns_file(std::string const& name) const {
     for (V3NefIndex y = 0; y <= N_.shape()[1]; y += N_.shape()[1]) { // y = [0, NY]
         for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                assert(cell_[x][0][z].type() == Fluid);
-                assert(cell_[x][N_.shape()[1]-1][z].type() == Fluid);
-                for (unsigned dx = 0; dx < 2; ++dx) {
-                    for (unsigned dz = 0; dz < 2; ++dz) {
-                        Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y), static_cast<double>(z + (dx == 0 ? (1 - dz) : dz)));
-                        #ifndef NDEBUG
-                        std::cerr << "Fluid cell boundary point at " << point << std::endl;
-                        #endif
-                        quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                if (cell_[x][y][z].type() == Fluid) {
+                    for (unsigned dx = 0; dx < 2; ++dx) {
+                        for (unsigned dz = 0; dz < 2; ++dz) {
+                            Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y), static_cast<double>(z + (dx == 0 ? (1 - dz) : dz)));
+                            #ifndef NDEBUG
+                            std::cerr << "Fluid cell boundary point at " << point << std::endl;
+                            #endif
+                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                        }
                     }
+                    ++quad_4_faces;
                 }
-                ++quad_4_faces;
             }
         }
         quad_4_face_range.clear();
@@ -443,18 +443,18 @@ int Grid::output_cgns_file(std::string const& name) const {
     for (V3NefIndex z = 0; z <= N_.shape()[2]; z += N_.shape()[2]) { // z = [0, NZ]
         for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
             for (V3NefIndex y = 0; y < N_.shape()[1]; ++y) {
-                assert(cell_[x][y][0].type() == Fluid);
-                assert(cell_[x][y][N_.shape()[2]-1].type() == Fluid);
-                for (unsigned dx = 0; dx < 2; ++dx) {
-                    for (unsigned dy = 0; dy < 2; ++dy) {
-                        Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + (dx == 0 ? (1 - dy) : dy)), static_cast<double>(z));
-                        #ifndef NDEBUG
-                        std::cerr << "Fluid cell boundary point at " << point << std::endl;
-                        #endif
-                        quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                if (cell_[x][y][z].type() == Fluid) {
+                    for (unsigned dx = 0; dx < 2; ++dx) {
+                        for (unsigned dy = 0; dy < 2; ++dy) {
+                            Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + (dx == 0 ? (1 - dy) : dy)), static_cast<double>(z));
+                            #ifndef NDEBUG
+                            std::cerr << "Fluid cell boundary point at " << point << std::endl;
+                            #endif
+                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                        }
                     }
+                    ++quad_4_faces;
                 }
-                ++quad_4_faces;
             }
         }
         quad_4_face_range.clear();
