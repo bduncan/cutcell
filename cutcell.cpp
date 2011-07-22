@@ -209,7 +209,7 @@ static typename std::vector<Element>::difference_type find_or_insert_index_of(st
 }
 
 int Grid::output_cgns_file(std::string const& name) const {
-    int hexa_8_cells = 0, tetra_4_cells = 0, quad_4_faces = 0;
+    int hexa_8_cells = 0, tetra_4_cells = 0, quad_4_faces = 0, tri_3_faces = 0;
     // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
     // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
     // The points_3 vector is the key for a naive implementation of a map.
@@ -248,13 +248,13 @@ int Grid::output_cgns_file(std::string const& name) const {
     hexa_8_elements.reserve(hexa_8_capacity);
     tetra_4_elements.reserve(tetra_4_capacity);
 
-    // For the Fluid boundary, we write QUAD_4 elements.
-    std::vector<int> quad_4_elements;
-    unsigned quad_4_capacity = 4 * cell_area;
+    // For the boundary, we write QUAD_4 and TRI_3 elements in a MIXED section.
+    std::vector<int> boundary_elements;
+    unsigned boundary_capacity = 5 * cell_area;
     #ifndef NDEBUG
-    std::cerr << "Pre-allocating " << (sizeof(int) * quad_4_capacity) << " bytes for QUAD_4 elements." << std::endl;
+    std::cerr << "Pre-allocating " << (sizeof(int) * boundary_capacity) << " bytes for QUAD_4 MIXED elements." << std::endl;
     #endif
-    quad_4_elements.reserve(quad_4_capacity);
+    boundary_elements.reserve(boundary_capacity);
 
     // We should store the Delaunay_triangulation of the Cut cells to ensure that we get the same answer for both the volume and the boundary.
     typedef boost::multi_array<Delaunay_triangulation, 3> V3Tri;
@@ -373,109 +373,241 @@ int Grid::output_cgns_file(std::string const& name) const {
     int index_bc = 0;
     // CGNS wants the element numbers of the faces which make up the boundary. Count the ones we are about to add, starting from the end of the 3D cells.
     int element_count = hexa_8_cells + tetra_4_cells;
-    std::vector<int> quad_4_face_range;
+    std::vector<int> face_range;
     // Boundary cells
     // Left/right boundary
     for (V3NefIndex x = 0; x <= N_.shape()[0]; x += N_.shape()[0]) { // x = [0, NX]
         for (V3NefIndex y = 0; y < N_.shape()[1]; ++y) {
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                if (cell_[x][y][z].type() == Fluid) {
+                const int cx = x > 0 ? x - 1 : x, cy = y, cz = z; // It's helpful to refer to the cell_ and T arrays, which have an index one less than the upper boundary.
+                if (cell_[cx][cy][cz].type() == Fluid) {
+                    boundary_elements.push_back(QUAD_4);
                     for (unsigned dy = 0; dy < 2; ++dy) {
                         for (unsigned dz = 0; dz < 2; ++dz) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
                         }
                     }
                     ++quad_4_faces;
                 }
+                else if (cell_[cx][cy][cz].type() == Cut) {
+                    // For a cut cell, we want to write TRI_3 elements of the points which are on
+                    // the plane which represents the boundary. Pick the three points out of any of
+                    // the tetrahedra which meet this condition.
+                    Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
+                                                  Nef_polyhedron::Vector_3(x == 0 ? -1 : 1, 0, 0));
+                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
+                        std::vector<Nef_polyhedron::Point_3> points;
+                        for (int i = 0; i < 4; ++i) {
+                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                            if (plane.has_on(point)) {
+                                points.push_back(point);
+                            }
+                        }
+                        if (points.size() == 3) {
+                            boundary_elements.push_back(TRI_3);
+                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            }
+                            ++tri_3_faces;
+                        }
+                    }
+                }
             }
         }
-        quad_4_face_range.clear();
-        quad_4_face_range.push_back(element_count + 1);
-        quad_4_face_range.push_back(element_count + quad_4_faces);
-        #ifndef NDEBUG
-        std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " boundary as range from " << quad_4_face_range[0] << " to " << quad_4_face_range[1] << "." << std::endl;
-        #endif
-        if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "Ilo" : "Ihi", BCWall, ElementRange, 2, &quad_4_face_range[0], &index_bc) != CG_OK) {
-            std::cerr << cg_get_error() << std::endl;
-            (void)cg_close(index_file);
-            return 1;
+        if (quad_4_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + quad_4_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloFluid" : "IhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += quad_4_faces;
         }
-        element_count += quad_4_faces;
+
+        if (tri_3_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + tri_3_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloCut" : "IhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += tri_3_faces;
+        }
+
+        tri_3_faces = 0;
         quad_4_faces = 0;
     }
     // Top/Bottom boundary
     for (V3NefIndex y = 0; y <= N_.shape()[1]; y += N_.shape()[1]) { // y = [0, NY]
         for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
             for (V3NefIndex z = 0; z < N_.shape()[2]; ++z) {
-                if (cell_[x][y][z].type() == Fluid) {
+                const int cx = x, cy = y > 0 ? y - 1 : y, cz = z; // It's helpful to refer to the cell_ and T arrays, which have an index one less than the upper boundary.
+                if (cell_[cx][cy][cz].type() == Fluid) {
+                    boundary_elements.push_back(QUAD_4);
                     for (unsigned dx = 0; dx < 2; ++dx) {
                         for (unsigned dz = 0; dz < 2; ++dz) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y), static_cast<double>(z + (dx == 0 ? (1 - dz) : dz)));
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
                         }
                     }
                     ++quad_4_faces;
                 }
+                else if (cell_[cx][cy][cz].type() == Cut) {
+                    // For a cut cell, we want to write TRI_3 elements of the points which are on
+                    // the plane which represents the boundary. Pick the three points out of any of
+                    // the tetrahedra which meet this condition.
+                    Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
+                                                  Nef_polyhedron::Vector_3(0, y == 0 ? -1 : 1, 0));
+                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
+                        std::vector<Nef_polyhedron::Point_3> points;
+                        for (int i = 0; i < 4; ++i) {
+                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                            if (plane.has_on(point)) {
+                                points.push_back(point);
+                            }
+                        }
+                        if (points.size() == 3) {
+                            boundary_elements.push_back(TRI_3);
+                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            }
+                            ++tri_3_faces;
+                        }
+                    }
+                }
             }
         }
-        quad_4_face_range.clear();
-        quad_4_face_range.push_back(element_count + 1);
-        quad_4_face_range.push_back(element_count + quad_4_faces);
-        #ifndef NDEBUG
-        std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " boundary as range from " << quad_4_face_range[0] << " to " << quad_4_face_range[1] << "." << std::endl;
-        #endif
-        if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "Jlo" : "Jhi", BCWall, ElementRange, 2, &quad_4_face_range[0], &index_bc) != CG_OK) {
-            std::cerr << cg_get_error() << std::endl;
-            (void)cg_close(index_file);
-            return 1;
+        if (quad_4_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + quad_4_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloFluid" : "JhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += quad_4_faces;
         }
-        element_count += quad_4_faces;
+
+        if (tri_3_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + tri_3_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloCut" : "JhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += tri_3_faces;
+        }
+
+        tri_3_faces = 0;
         quad_4_faces = 0;
     }
     // Near/Far boundary
     for (V3NefIndex z = 0; z <= N_.shape()[2]; z += N_.shape()[2]) { // z = [0, NZ]
         for (V3NefIndex x = 0; x < N_.shape()[0]; ++x) {
             for (V3NefIndex y = 0; y < N_.shape()[1]; ++y) {
-                if (cell_[x][y][z].type() == Fluid) {
+                const int cx = x, cy = y, cz = z > 0 ? z - 1 : z; // It's helpful to refer to the cell_ and T arrays, which have an index one less than the upper boundary.
+                if (cell_[cx][cy][cz].type() == Fluid) {
+                    boundary_elements.push_back(QUAD_4);
                     for (unsigned dx = 0; dx < 2; ++dx) {
                         for (unsigned dy = 0; dy < 2; ++dy) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + (dx == 0 ? (1 - dy) : dy)), static_cast<double>(z));
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            quad_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
                         }
                     }
                     ++quad_4_faces;
                 }
+                else if (cell_[cx][cy][cz].type() == Cut) {
+                    // For a cut cell, we want to write TRI_3 elements of the points which are on
+                    // the plane which represents the boundary. Pick the three points out of any of
+                    // the tetrahedra which meet this condition.
+                    Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
+                                                  Nef_polyhedron::Vector_3(0, 0, z == 0 ? -1 : 1));
+                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
+                        std::vector<Nef_polyhedron::Point_3> points;
+                        for (int i = 0; i < 4; ++i) {
+                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                            if (plane.has_on(point)) {
+                                points.push_back(point);
+                            }
+                        }
+                        if (points.size() == 3) {
+                            boundary_elements.push_back(TRI_3);
+                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            }
+                            ++tri_3_faces;
+                        }
+                    }
+                }
             }
         }
-        quad_4_face_range.clear();
-        quad_4_face_range.push_back(element_count + 1);
-        quad_4_face_range.push_back(element_count + quad_4_faces);
-        #ifndef NDEBUG
-        std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " boundary as range from " << quad_4_face_range[0] << " to " << quad_4_face_range[1] << "." << std::endl;
-        #endif
-        if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "Klo" : "Khi", BCWall, ElementRange, 2, &quad_4_face_range[0], &index_bc) != CG_OK) {
-            std::cerr << cg_get_error() << std::endl;
-            (void)cg_close(index_file);
-            return 1;
+        if (quad_4_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + quad_4_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloFluid" : "KhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += quad_4_faces;
         }
-        element_count += quad_4_faces;
+
+        if (tri_3_faces > 0) {
+            face_range.clear();
+            face_range.push_back(element_count + 1);
+            face_range.push_back(element_count + tri_3_faces);
+            #ifndef NDEBUG
+            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            #endif
+            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloCut" : "KhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+                std::cerr << cg_get_error() << std::endl;
+                (void)cg_close(index_file);
+                return 1;
+            }
+            element_count += tri_3_faces;
+        }
+
+        tri_3_faces = 0;
         quad_4_faces = 0;
     }
-    if (quad_4_elements.size() > 0) {
+    if (boundary_elements.size() > 0) {
         #ifndef NDEBUG
-        std::cerr << "Writing " << (quad_4_elements.size() / 4) << " Boundary face elements with " << quad_4_elements.size() << " nodes..." << std::endl;
+        std::cerr << "Writing " << (element_count - hexa_8_cells - tetra_4_cells) << " Fluid Boundary face elements with " << boundary_elements.size() << " nodes..." << std::endl;
         #endif
-        if (cg_section_write(index_file, index_base, index_zone, "3_BoundaryElements", QUAD_4, 1, quad_4_elements.size() / 4, /* nbndry = */ 0, &quad_4_elements[0], &index_section) != CG_OK) {
+        if (cg_section_write(index_file, index_base, index_zone, "3_BoundaryElements", MIXED, hexa_8_cells + tetra_4_cells + 1, element_count /*- hexa_8_cells - tetra_4_cells*/, /* nbndry = */ 0, &boundary_elements[0], &index_section) != CG_OK) {
             std::cerr << cg_get_error() << std::endl;
             (void)cg_close(index_file);
             return 1;
@@ -484,7 +616,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     #ifndef NDEBUG
     std::cerr << "Pre-allocated " << hexa_8_capacity << " sizeof(int)s for HEXA_8, actually used " << hexa_8_elements.size() << "." << std::endl;
     std::cerr << "Pre-allocated " << tetra_4_capacity << " sizeof(int)s for TETRA_4, actually used " << tetra_4_elements.size() << "." << std::endl;
-    std::cerr << "Pre-allocated " << quad_4_capacity << " sizeof(int)s for quad_4, actually used " << quad_4_elements.size() << "." << std::endl;
+    std::cerr << "Pre-allocated " << boundary_capacity << " sizeof(int)s for boundary, actually used " << boundary_elements.size() << "." << std::endl;
     std::cerr << "Pre-allocated " << points_capacity << " sizeof(int)s for each points vector, actually used " << xvec.size() << "." << std::endl;
     #endif
 
