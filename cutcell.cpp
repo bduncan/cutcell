@@ -296,7 +296,10 @@ int Grid::output_cgns_file(std::string const& name) const {
                             continue;
                         Polyhedron P;
                         N.convert_inner_shell_to_polyhedron(vit->shells_begin(), P);
-                        T[x][y][z].insert(P.points_begin(), P.points_end());
+                        /* For some reason T[x][y][z].insert(...) produces the wrong result!
+                           Using the default constructor and then calling .insert() on a temporary also gives the correct result.
+                        */
+                        T[x][y][z] = Delaunay_triangulation(P.points_begin(), P.points_end());
                         for (Delaunay_triangulation::Finite_cells_iterator it = T[x][y][z].finite_cells_begin(); it != T[x][y][z].finite_cells_end(); ++it) {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
