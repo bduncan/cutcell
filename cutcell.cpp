@@ -376,7 +376,8 @@ int Grid::output_cgns_file(std::string const& name) const {
     int index_bc = 0;
     // CGNS wants the element numbers of the faces which make up the boundary. Count the ones we are about to add, starting from the end of the 3D cells.
     int element_count = hexa_8_cells + tetra_4_cells;
-    std::vector<int> face_range;
+    std::vector<int> quad_4_face_list;
+    std::vector<int> tri_3_face_list;
     // Boundary cells
     // Left/right boundary
     for (V3NefIndex x = 0; x <= N_.shape()[0]; x += N_.shape()[0]) { // x = [0, NX]
@@ -395,6 +396,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         }
                     }
                     ++quad_4_faces;
+                    quad_4_face_list.push_back(++element_count);
                 }
                 else if (cell_[cx][cy][cz].type() == Cut) {
                     // For a cut cell, we want to write TRI_3 elements of the points which are on
@@ -416,39 +418,34 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tri_3_faces;
+                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
             }
         }
         if (quad_4_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + quad_4_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " fluid boundary as list of size " << quad_4_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloFluid" : "IhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloFluid" : "IhiFluid", BCWall, ElementList, quad_4_face_list.size(), &quad_4_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += quad_4_faces;
+            quad_4_face_list.clear();
         }
 
         if (tri_3_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + tri_3_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (x == 0 ? "Ilo" : "Ihi") << " cut boundary as list of size " << tri_3_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloCut" : "IhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, x == 0 ? "IloCut" : "IhiCut", BCWall, ElementList, tri_3_face_list.size(), &tri_3_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += tri_3_faces;
+            tri_3_face_list.clear();
         }
 
         tri_3_faces = 0;
@@ -471,6 +468,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         }
                     }
                     ++quad_4_faces;
+                    quad_4_face_list.push_back(++element_count);
                 }
                 else if (cell_[cx][cy][cz].type() == Cut) {
                     // For a cut cell, we want to write TRI_3 elements of the points which are on
@@ -492,39 +490,34 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tri_3_faces;
+                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
             }
         }
         if (quad_4_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + quad_4_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " fluid boundary as list of size " << quad_4_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloFluid" : "JhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloFluid" : "JhiFluid", BCWall, ElementList, quad_4_face_list.size(), &quad_4_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += quad_4_faces;
+            quad_4_face_list.clear();
         }
 
         if (tri_3_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + tri_3_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (y == 0 ? "Jlo" : "Jhi") << " cut boundary as list of size " << tri_3_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloCut" : "JhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, y == 0 ? "JloCut" : "JhiCut", BCWall, ElementList, tri_3_face_list.size(), &tri_3_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += tri_3_faces;
+            tri_3_face_list.clear();
         }
 
         tri_3_faces = 0;
@@ -547,6 +540,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         }
                     }
                     ++quad_4_faces;
+                    quad_4_face_list.push_back(++element_count);
                 }
                 else if (cell_[cx][cy][cz].type() == Cut) {
                     // For a cut cell, we want to write TRI_3 elements of the points which are on
@@ -568,39 +562,34 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tri_3_faces;
+                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
             }
         }
         if (quad_4_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + quad_4_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " fluid boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " fluid boundary as list of size " << quad_4_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloFluid" : "KhiFluid", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloFluid" : "KhiFluid", BCWall, ElementList, quad_4_face_list.size(), &quad_4_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += quad_4_faces;
+            quad_4_face_list.clear();
         }
 
         if (tri_3_faces > 0) {
-            face_range.clear();
-            face_range.push_back(element_count + 1);
-            face_range.push_back(element_count + tri_3_faces);
             #ifndef NDEBUG
-            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " cut boundary as range from " << face_range[0] << " to " << face_range[1] << "." << std::endl;
+            std::cerr << "Writing " << (z == 0 ? "Klo" : "Khi") << " cut boundary as list of size " << tri_3_face_list.size() << "." << std::endl;
             #endif
-            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloCut" : "KhiCut", BCWall, ElementRange, 2, &face_range[0], &index_bc) != CG_OK) {
+            if (cg_boco_write(index_file, index_base, index_zone, z == 0 ? "KloCut" : "KhiCut", BCWall, ElementList, tri_3_face_list.size(), &tri_3_face_list[0], &index_bc) != CG_OK) {
                 std::cerr << cg_get_error() << std::endl;
                 (void)cg_close(index_file);
                 return 1;
             }
-            element_count += tri_3_faces;
+            tri_3_face_list.clear();
         }
 
         tri_3_faces = 0;
