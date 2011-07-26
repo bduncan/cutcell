@@ -257,7 +257,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     boundary_elements.reserve(boundary_capacity);
 
     // We should store the Delaunay_triangulation of the Cut cells to ensure that we get the same answer for both the volume and the boundary.
-    typedef boost::multi_array<Delaunay_triangulation, 3> V3Tri;
+    typedef boost::multi_array<std::vector<Delaunay_triangulation>, 3> V3Tri;
     V3Tri T(boost::extents[N_.shape()[0]][N_.shape()[1]][N_.shape()[2]]);
 
     for (V3NefIndex x = 0; x < N_.shape()[0]; ++x)
@@ -299,14 +299,15 @@ int Grid::output_cgns_file(std::string const& name) const {
                         /* For some reason T[x][y][z].insert(...) produces the wrong result!
                            Using the default constructor and then calling .insert() on a temporary also gives the correct result.
                         */
-                        T[x][y][z] = Delaunay_triangulation(P.points_begin(), P.points_end());
-                        for (Delaunay_triangulation::Finite_cells_iterator it = T[x][y][z].finite_cells_begin(); it != T[x][y][z].finite_cells_end(); ++it) {
+                        Delaunay_triangulation Tnew(P.points_begin(), P.points_end());
+                        for (Delaunay_triangulation::Finite_cells_iterator it = Tnew.finite_cells_begin(); it != Tnew.finite_cells_end(); ++it) {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 tetra_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tetra_4_cells;
                         }
+                        T[x][y][z].push_back(Tnew);
                     }
                 }
             }
@@ -404,21 +405,23 @@ int Grid::output_cgns_file(std::string const& name) const {
                     // the tetrahedra which meet this condition.
                     Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
                                                   Nef_polyhedron::Vector_3(x == 0 ? -1 : 1, 0, 0));
-                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
-                        std::vector<Nef_polyhedron::Point_3> points;
-                        for (int i = 0; i < 4; ++i) {
-                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
-                            if (plane.has_on(point)) {
-                                points.push_back(point);
+                    for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
+                        for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
+                            std::vector<Nef_polyhedron::Point_3> points;
+                            for (int i = 0; i < 4; ++i) {
+                                Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                                if (plane.has_on(point)) {
+                                    points.push_back(point);
+                                }
                             }
-                        }
-                        if (points.size() == 3) {
-                            boundary_elements.push_back(TRI_3);
-                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
-                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            if (points.size() == 3) {
+                                boundary_elements.push_back(TRI_3);
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                }
+                                ++tri_3_faces;
+                                tri_3_face_list.push_back(++element_count);
                             }
-                            ++tri_3_faces;
-                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
@@ -476,21 +479,23 @@ int Grid::output_cgns_file(std::string const& name) const {
                     // the tetrahedra which meet this condition.
                     Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
                                                   Nef_polyhedron::Vector_3(0, y == 0 ? -1 : 1, 0));
-                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
-                        std::vector<Nef_polyhedron::Point_3> points;
-                        for (int i = 0; i < 4; ++i) {
-                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
-                            if (plane.has_on(point)) {
-                                points.push_back(point);
+                    for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
+                        for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
+                            std::vector<Nef_polyhedron::Point_3> points;
+                            for (int i = 0; i < 4; ++i) {
+                                Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                                if (plane.has_on(point)) {
+                                    points.push_back(point);
+                                }
                             }
-                        }
-                        if (points.size() == 3) {
-                            boundary_elements.push_back(TRI_3);
-                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
-                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            if (points.size() == 3) {
+                                boundary_elements.push_back(TRI_3);
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                }
+                                ++tri_3_faces;
+                                tri_3_face_list.push_back(++element_count);
                             }
-                            ++tri_3_faces;
-                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
@@ -548,21 +553,23 @@ int Grid::output_cgns_file(std::string const& name) const {
                     // the tetrahedra which meet this condition.
                     Nef_polyhedron::Plane_3 plane(Nef_polyhedron::Point_3(static_cast<double>(x), static_cast<double>(y), static_cast<double>(z)),
                                                   Nef_polyhedron::Vector_3(0, 0, z == 0 ? -1 : 1));
-                    for (Delaunay_triangulation::Finite_cells_iterator it = T[cx][cy][cz].finite_cells_begin(); it != T[cx][cy][cz].finite_cells_end(); ++it) {
-                        std::vector<Nef_polyhedron::Point_3> points;
-                        for (int i = 0; i < 4; ++i) {
-                            Nef_polyhedron::Point_3 point = it->vertex(i)->point();
-                            if (plane.has_on(point)) {
-                                points.push_back(point);
+                    for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
+                        for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
+                            std::vector<Nef_polyhedron::Point_3> points;
+                            for (int i = 0; i < 4; ++i) {
+                                Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                                if (plane.has_on(point)) {
+                                    points.push_back(point);
+                                }
                             }
-                        }
-                        if (points.size() == 3) {
-                            boundary_elements.push_back(TRI_3);
-                            for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
-                                boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                            if (points.size() == 3) {
+                                boundary_elements.push_back(TRI_3);
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                }
+                                ++tri_3_faces;
+                                tri_3_face_list.push_back(++element_count);
                             }
-                            ++tri_3_faces;
-                            tri_3_face_list.push_back(++element_count);
                         }
                     }
                 }
