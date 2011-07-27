@@ -106,9 +106,9 @@ void GenerateThread::run() {
     cutcell::Nef_polyhedron N1(P);
     // Transform the object accordingly.
     p->statusBarLabel->setText("Translating and scaling...");
-    cutcell::Aff_transformation Aff1(cutcell::TRANSLATION,
+    cutcell::Aff_transformation Aff1(cutcell::SCALING, scaling);
+    cutcell::Aff_transformation Aff2(cutcell::TRANSLATION,
                                      cutcell::Vector(transX, transY, transZ));
-    cutcell::Aff_transformation Aff2(cutcell::SCALING, scaling);
     N1.transform(Aff1);
     N1.transform(Aff2);
 

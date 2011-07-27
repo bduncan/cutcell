@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
     cutcell::Nef_polyhedron N1(P);
 
     // Transform the object accordingly.
-    cutcell::Aff_transformation Aff1(cutcell::TRANSLATION, cutcell::Vector(oX, oY, oZ));
-    cutcell::Aff_transformation Aff2(cutcell::SCALING, s);
+    cutcell::Aff_transformation Aff1(cutcell::SCALING, s);
+    cutcell::Aff_transformation Aff2(cutcell::TRANSLATION, cutcell::Vector(oX, oY, oZ));
     N1.transform(Aff1);
     N1.transform(Aff2);
 
