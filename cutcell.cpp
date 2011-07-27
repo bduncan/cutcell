@@ -172,54 +172,85 @@ std::ostream& Grid::output_nef(std::ostream& out) const {
     return out;
 }
 
-template <class Element>
-static typename std::vector<Element>::difference_type find_or_insert_index_of(std::vector<Element>& points_3, Element const & point, std::vector<double>& xvec, std::vector<double>& yvec, std::vector<double>& zvec) {
-    // Iterating backwards might be faster, due to locality.
-    typename std::vector<Element>::reverse_iterator it;
-    for (it = points_3.rbegin(); it != points_3.rend(); ++it)
-        if (*it == point)
-            break;
-    if (it == points_3.rend()) { // if point not in points_3
-        xvec.push_back(CGAL::to_double(point.x()));
-        yvec.push_back(CGAL::to_double(point.y()));
-        zvec.push_back(CGAL::to_double(point.z()));
-        points_3.push_back(point);
+template <class Point, class Coordinate>
+class GridCoordinates {
+    public:
+    GridCoordinates() : xvec_(), yvec_(), zvec_(), points_3_(), points_written_(false) {};
+    typename std::vector<Point>::difference_type find_or_insert_index_of(Point const & point) {
+        // Iterating backwards might be faster, due to locality.
+        typename std::vector<Point>::reverse_iterator it;
+        for (it = points_3_.rbegin(); it != points_3_.rend(); ++it)
+            if (*it == point)
+                break;
+        if (it == points_3_.rend()) { // if point not in points_3
+            // If the user has called points_written() and we are asked to add 
+            // another point, the resulting CGNS file will not contain the new
+            // point.
+            assert(!points_written_);
+            xvec_.push_back(CGAL::to_double(point.x()));
+            yvec_.push_back(CGAL::to_double(point.y()));
+            zvec_.push_back(CGAL::to_double(point.z()));
+            points_3_.push_back(point);
+            #ifndef NDEBUG
+            std::cerr << "Added point " << points_3_[points_3_.size() - 1] << ": " << xvec_[xvec_.size() - 1] << " " << yvec_[yvec_.size() - 1] << " " << zvec_[zvec_.size() - 1] << std::endl;
+            #endif
+            // it may have been invalidated by push_back. Make sure we have an iterator at the new point.
+            it = points_3_.rbegin();
+            assert(*it == point);
+        }
+        // Push the index of the element in the points_3 set into the connectivity list.
+        // Because std::vector has bidirectional random-access iterators, std::distance from rend will be negative and 1-based. Make sure it's positive.
+        typename std::vector<Point>::difference_type element_index = -std::distance(--points_3_.rend(), it);
         #ifndef NDEBUG
-        std::cerr << "Added point " << points_3[points_3.size() - 1] << ": " << xvec[xvec.size() - 1] << " " << yvec[yvec.size() - 1] << " " << zvec[zvec.size() - 1] << std::endl;
+        // This is the alternative, potentially slower, algorithm for finding the location of point in points_3
+        // Test that it gets the same answer as the one above.
+        // For this we need a forward iterator...
+        typename std::vector<Point>::iterator itf;
+        for (itf = points_3_.begin(); itf != points_3_.end(); ++itf)
+            if (*itf == point)
+                break;
+        if (itf == points_3_.end()) {
+            std::cerr << "Could not find point " << point << " in points_3 vector! Aborting..." << std::endl;
+            abort();
+        }
+        std::cerr << "element index: " << element_index << std::endl;
+        assert(element_index == std::distance(points_3_.begin(), itf));
         #endif
-        // it may have been invalidated by push_back. Make sure we have an iterator at the new point.
-        it = points_3.rbegin();
-        assert(*it == point);
+        return element_index;
     }
-    // Push the index of the element in the points_3 set into the connectivity list.
-    // Because std::vector has bidirectional random-access iterators, std::distance from rend will be negative and 1-based. Make sure it's positive.
-    typename std::vector<Element>::difference_type element_index = -std::distance(--points_3.rend(), it);
-    #ifndef NDEBUG
-    // This is the alternative, potentially slower, algorithm for finding the location of point in points_3
-    // Test that it gets the same answer as the one above.
-    // For this we need a forward iterator...
-    typename std::vector<Element>::iterator itf;
-    for (itf = points_3.begin(); itf != points_3.end(); ++itf)
-        if (*itf == point)
-            break;
-    if (itf == points_3.end()) {
-        std::cerr << "Could not find point " << point << " in points_3 vector! Aborting..." << std::endl;
-        abort();
+    void reserve(size_t capacity) {
+        xvec_.reserve(capacity);
+        yvec_.reserve(capacity);
+        zvec_.reserve(capacity);
+        points_3_.reserve(capacity);
     }
-    std::cerr << "element index: " << element_index << std::endl;
-    assert(element_index == std::distance(points_3.begin(), itf));
-    #endif
-    return element_index;
-}
+    size_t size() const {
+        return points_3_.size();
+    }
+    std::vector<Coordinate> const& xvec() const {
+        return xvec_;
+    }
+    std::vector<Coordinate> const& yvec() const {
+        return yvec_;
+    }
+    std::vector<Coordinate> const& zvec() const {
+        return zvec_;
+    }
+    void points_written() {
+        points_written_ = true;
+    }
+    private:
+    bool points_written_;
+    std::vector<Coordinate> xvec_, yvec_, zvec_;
+    std::vector<Point> points_3_;
+};
 
 int Grid::output_cgns_file(std::string const& name) const {
     int hexa_8_cells = 0, tetra_4_cells = 0, quad_4_faces = 0, tri_3_faces = 0;
-    // Loop over all the Vertices (Points) in the grid and _uniquely_ add them
-    // to the xvec, yvec, zvec vectors of the respective 3D coordinates.
-    // The points_3 vector is the key for a naive implementation of a map.
+    // A GridCoordinates is a naive implementation of a map, where a 
+    // Nef_polyhedron::Point_3 maps to three doubles.
+    GridCoordinates<Nef_polyhedron::Point_3, double> points;
 
-    std::vector<double> xvec, yvec, zvec;
-    std::vector<Nef_polyhedron::Point_3> points_3;
     // Try to save time later by allocating the space we need now. For this we need the volume and area of the domain:
     unsigned const cell_area = 2 * ((N_.shape()[0] * N_.shape()[1]) + (N_.shape()[1] * N_.shape()[2]) + (N_.shape()[2] * N_.shape()[0]));
     unsigned const cell_volume = N_.shape()[0] * N_.shape()[1] * N_.shape()[2];
@@ -231,14 +262,9 @@ int Grid::output_cgns_file(std::string const& name) const {
     std::cerr << "Grid extent (size + 1) is " << (N_.shape()[0] + 1) << " x " << (N_.shape()[1] + 1) << " x " << (N_.shape()[2] + 1) << " = " << points_volume << " vertices." << std::endl;
     std::cerr << "Solid has " << N1_.number_of_vertices() << " points (expecting twice this number of output vertices)." << std::endl;
     std::cerr << "Pre-allocating " << (3 * sizeof(double) * points_capacity) << " bytes for double points." << std::endl;
-    #endif
-    xvec.reserve(points_capacity);
-    yvec.reserve(points_capacity);
-    zvec.reserve(points_capacity);
-    #ifndef NDEBUG
     std::cerr << "Pre-allocating " << (sizeof(Nef_polyhedron::Point_3) * points_capacity) << " bytes for Nef_polyhedron::Point_3s." << std::endl;
     #endif
-    points_3.reserve(points_capacity);
+    points.reserve(points_capacity);
 
     // CGNS requires the indices into the xvec, yvec, zvec vectors to identify
     // the nodes of the polyhedra (in this case only hexahedrons and
@@ -282,7 +308,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                                 std::cerr << "Fluid cell point at " << point << std::endl;
                                 ++nodes;
                                 #endif
-                                hexa_8_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                hexa_8_elements.push_back(points.find_or_insert_index_of(point) + 1); // indices are 1-based.
                             }
                     #ifndef NDEBUG
                     assert(nodes == 8);
@@ -309,7 +335,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 point.transform(A_);
-                                tetra_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                tetra_4_elements.push_back(points.find_or_insert_index_of(point) + 1); // indices are 1-based.
                             }
                             ++tetra_4_cells;
                         }
@@ -330,7 +356,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     }
     int isize[9] = {0};
     // vertex size
-    isize[0] = points_3.size();
+    isize[0] = points.size();
     // cell size
     assert(hexa_8_cells + tetra_4_cells > 0);
     isize[1] = hexa_8_cells + tetra_4_cells;
@@ -342,19 +368,18 @@ int Grid::output_cgns_file(std::string const& name) const {
         return 1;
     }
     #ifndef NDEBUG
-    std::cerr << "Writing " << xvec.size() << " coordinates..." << std::endl;
+    std::cerr << "Writing " << points.size() << " coordinates..." << std::endl;
     #endif
     // We told cg_zone_write to expect isize[0] vertex coordinates in each dimension.
-    assert(xvec.size() >= isize[0]);
-    assert(yvec.size() >= isize[0]);
-    assert(zvec.size() >= isize[0]);
-    if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", &xvec[0], &index_coord_x) != CG_OK ||
-        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", &yvec[0], &index_coord_y) != CG_OK ||
-        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", &zvec[0], &index_coord_z) != CG_OK) {
+    assert(points.size() >= isize[0]);
+    if (cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateX", &points.xvec()[0], &index_coord_x) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateY", &points.yvec()[0], &index_coord_y) != CG_OK ||
+        cg_coord_write(index_file, index_base, index_zone, RealDouble, "CoordinateZ", &points.zvec()[0], &index_coord_z) != CG_OK) {
         std::cerr << cg_get_error() << std::endl;
         (void)cg_close(index_file);
         return 1;
     }
+    points.points_written();
     if (hexa_8_cells > 0) {
         #ifndef NDEBUG
         std::cerr << "Writing " << hexa_8_cells << " Fluid elements with " << hexa_8_elements.size() << " nodes..." << std::endl;
@@ -400,7 +425,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(points.find_or_insert_index_of(point) + 1);
                         }
                     }
                     ++quad_4_faces;
@@ -414,18 +439,18 @@ int Grid::output_cgns_file(std::string const& name) const {
                                                   Nef_polyhedron::Vector_3(x == 0 ? -1 : 1, 0, 0));
                     for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
                         for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
-                            std::vector<Nef_polyhedron::Point_3> points;
+                            std::vector<Nef_polyhedron::Point_3> boundary_points;
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 if (plane.has_on(point)) {
-                                    points.push_back(point);
+                                    boundary_points.push_back(point);
                                 }
                             }
-                            if (points.size() == 3) {
+                            if (boundary_points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
-                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = boundary_points.begin(); pointit != boundary_points.end(); ++pointit) {
                                     pointit->transform(A_);
-                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                    boundary_elements.push_back(points.find_or_insert_index_of(*pointit) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
                                 tri_3_face_list.push_back(++element_count);
@@ -476,7 +501,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(points.find_or_insert_index_of(point) + 1);
                         }
                     }
                     ++quad_4_faces;
@@ -490,18 +515,18 @@ int Grid::output_cgns_file(std::string const& name) const {
                                                   Nef_polyhedron::Vector_3(0, y == 0 ? -1 : 1, 0));
                     for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
                         for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
-                            std::vector<Nef_polyhedron::Point_3> points;
+                            std::vector<Nef_polyhedron::Point_3> boundary_points;
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 if (plane.has_on(point)) {
-                                    points.push_back(point);
+                                    boundary_points.push_back(point);
                                 }
                             }
-                            if (points.size() == 3) {
+                            if (boundary_points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
-                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = boundary_points.begin(); pointit != boundary_points.end(); ++pointit) {
                                     pointit->transform(A_);
-                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                    boundary_elements.push_back(points.find_or_insert_index_of(*pointit) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
                                 tri_3_face_list.push_back(++element_count);
@@ -552,7 +577,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
-                            boundary_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1);
+                            boundary_elements.push_back(points.find_or_insert_index_of(point) + 1);
                         }
                     }
                     ++quad_4_faces;
@@ -566,18 +591,18 @@ int Grid::output_cgns_file(std::string const& name) const {
                                                   Nef_polyhedron::Vector_3(0, 0, z == 0 ? -1 : 1));
                     for (std::vector<Delaunay_triangulation>::iterator tri_it = T[cx][cy][cz].begin(); tri_it != T[cx][cy][cz].end(); ++tri_it) {
                         for (Delaunay_triangulation::Finite_cells_iterator it = tri_it->finite_cells_begin(); it != tri_it->finite_cells_end(); ++it) {
-                            std::vector<Nef_polyhedron::Point_3> points;
+                            std::vector<Nef_polyhedron::Point_3> boundary_points;
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
                                 if (plane.has_on(point)) {
-                                    points.push_back(point);
+                                    boundary_points.push_back(point);
                                 }
                             }
-                            if (points.size() == 3) {
+                            if (boundary_points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
-                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = boundary_points.begin(); pointit != boundary_points.end(); ++pointit) {
                                     pointit->transform(A_);
-                                    boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
+                                    boundary_elements.push_back(points.find_or_insert_index_of(*pointit) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
                                 tri_3_face_list.push_back(++element_count);
@@ -628,7 +653,7 @@ int Grid::output_cgns_file(std::string const& name) const {
     std::cerr << "Pre-allocated " << hexa_8_capacity << " sizeof(int)s for HEXA_8, actually used " << hexa_8_elements.size() << "." << std::endl;
     std::cerr << "Pre-allocated " << tetra_4_capacity << " sizeof(int)s for TETRA_4, actually used " << tetra_4_elements.size() << "." << std::endl;
     std::cerr << "Pre-allocated " << boundary_capacity << " sizeof(int)s for boundary, actually used " << boundary_elements.size() << "." << std::endl;
-    std::cerr << "Pre-allocated " << points_capacity << " sizeof(int)s for each points vector, actually used " << xvec.size() << "." << std::endl;
+    std::cerr << "Pre-allocated " << points_capacity << " sizeof(int)s for each points vector, actually used " << points.size() << "." << std::endl;
     #endif
 
     if (cg_close(index_file) != CG_OK) {
