@@ -19,9 +19,9 @@ git-buildpackage
 
 to build a new package. Use:
 
-git-dch  --debian-tag='%(version)s' --new-version=$(REL) --release
-git commit debian/changelog -m "Release: $(REL)"
-git tag -a $(REL) -m "Tagged for release: $(REL)"
+git-dch  --debian-tag='%(version)s' --new-version=${REL} --release
+git commit debian/changelog -m "Release: ${REL}"
+git tag -a ${REL} -m "Tagged for release: ${REL}"
 
 to create a new versioned release. git-dch will use the git history to make the
 Debian changelog and allow you to edit it.
