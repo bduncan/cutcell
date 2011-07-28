@@ -3,7 +3,7 @@
  * Generate a 3D Cartesian array of unit cubes, with the given solid
  * subtracted from them. Export various properties of the cubes.
  *
- * Copyright 2010 Bruce Duncan, University of Edinburgh
+ * Copyright 2010,2011 Bruce Duncan, University of Edinburgh
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
