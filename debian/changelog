@@ -1,3 +1,73 @@
+cutcell (0.0.3) natty; urgency=low
+
+  * Remove IntersectionTest and UnionTest.
+  * Add components to easily build a Debian package.
+  * Add --as-needed --no-undefined to the linker flags.
+  * Ignore my TODO file.
+  * Split functionality out into separate files.
+  * Make stream functions const (bug fixed in CGAL 3.7).
+  * Add missing cassert header.
+  * Convert nested std::vectors to boost::multi_array.
+  * Remove unnecessary array.
+  * Use simple triple for-loop instead of iterator.
+  * Fix a few compile errors, and an assertion.
+  * Fix missing ;
+  * Ignore vim swap files.
+  * Fix Grid constructor and assertion.
+  * Change testcase to one about constructing a multi_array.
+  * Fix CGNS error path...
+  * Add cutcellcli.
+  * Rename cutcellcli to cutcell.
+  * Change testcase to one of iterating over facets.
+  * Work on Nef_polyhedron directly. Output CGNS.
+  * Fix CLI to read OFF and write CGNS.
+  * Add GUI interface.
+  * Remove requirement for Polyhedron to store plane normals.
+  * Fix the GUI.
+  * Remove visualisation_SNC.
+  * Implement cubic button. Set allowed grid size values.
+  * Add filters to file dialogs.
+  * Add a debug message for cell number. Assert that the number of cells be positive non-zero.
+  * Reorder GUI functions do they more closely match the layout.
+  * Thread the cutcell work in the GUI and add status bar messages.
+  * Ensure the grid size has been specified in the CLI.
+  * Convert make_cube_3 to use Nef_polyhedron exclusively.
+  * Make the cube have a point at the origin, instead of being centred on it.
+  * Reorder widgets (implicitly fixes tab order)
+  * Update the unit cube definition.
+  * Implement cut cell output.
+  * Implement a special case for fluid cells.
+  * Split common code into a function.
+  * Add short options to cutcell CLI.
+  * Verbose polyhedron input with error checking.
+  * Small cleanups.
+  * Drastically improve memory usage.
+  * Code cleanups.
+  * Verbose polyhedron input and error checking for the GUI.
+  * Optimise scanning the grid for solid points.
+  * Optimise creating the list of grid coordinates.
+  * Remove unused code.
+  * Factor out some initialisation code.
+  * Simplify debugging output slightly.
+  * Add a counter for the cell types over the whole grid.
+  * Optimise by pre-allocating CGNS arrays.
+  * Compute the bounding box using integer arithmetic.
+  * Add boundary faces.
+  * Number the CGNS sections.
+  * Correct the element numbers.
+  * Factor out the computation of the grid size.
+  * Add a diagnostic approximation of the memory used.
+  * Store the triangulation of each cell.
+  * Ignore Cut boundaries, instead of asserting.
+  * Also write out Cut boundaries.
+  * Fix a regression caused by 7ec6bcc3.
+  * Write the boundary conditions as ElementLists.
+  * Store _all_ Delaunay_triangulations.
+  * Update copyright for 2011. Clarify make_cube_3 license.
+  * Fix INSTALL instructions.
+
+ -- Bruce Duncan <Bruce.Duncan@ed.ac.uk>  Thu, 28 Jul 2011 17:22:06 +0100
+
 cutcell (0.0.2) maverick; urgency=low
 
   [ David Ingram ]
