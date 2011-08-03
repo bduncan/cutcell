@@ -28,6 +28,8 @@
 
 int main(int argc, char **argv) {
     int NX, NY, NZ;
+    double dx, dy, dz;
+    double x0, y0, z0;
     double oX, oY, oZ, s;
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
@@ -35,6 +37,12 @@ int main(int argc, char **argv) {
         ("size-x,X", boost::program_options::value<int>(&NX), "grid size in X dimension")
         ("size-y,Y", boost::program_options::value<int>(&NY), "grid size in Y dimension")
         ("size-z,Z", boost::program_options::value<int>(&NZ), "grid size in Z dimension")
+        ("dx", boost::program_options::value<double>(&dx)->default_value(1.0), "cell size in X dimension")
+        ("dy", boost::program_options::value<double>(&dy)->default_value(1.0), "cell size in Y dimension")
+        ("dz", boost::program_options::value<double>(&dz)->default_value(1.0), "cell size in Z dimension")
+        ("x0", boost::program_options::value<double>(&x0)->default_value(0.0), "X component of origin")
+        ("y0", boost::program_options::value<double>(&y0)->default_value(0.0), "Y component of origin")
+        ("z0", boost::program_options::value<double>(&z0)->default_value(0.0), "Z component of origin")
         ("offset-x,x", boost::program_options::value<double>(&oX)->default_value(0.0), "translation vector in X dimension")
         ("offset-y,y", boost::program_options::value<double>(&oY)->default_value(0.0), "translation vector in Y dimension")
         ("offset-z,z", boost::program_options::value<double>(&oZ)->default_value(0.0), "translation vector in Z dimension")
@@ -82,6 +90,11 @@ int main(int argc, char **argv) {
 
     // Create the cutting grid.
     cutcell::Grid grid(NX, NY, NZ);
+
+    // Register the cell size and origin transform
+    grid.addTransform(cutcell::Aff_transformation(dx, 0,  0,  x0,
+                                                 0,  dy, 0,  y0,
+                                                 0,  0,  dz, z0));
 
     // Cut the grid to the object.
     grid.addSolid(N1);

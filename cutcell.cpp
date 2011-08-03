@@ -37,7 +37,7 @@ namespace cutcell {
 
 typedef CGAL::Delaunay_triangulation_3<cutcell::Kernel> Delaunay_triangulation;
 
-Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]), nCells_(), N1_() {
+Grid::Grid(int X, int Y, int Z) : N_(boost::extents[X][Y][Z]), cell_(boost::extents[X][Y][Z]), nCells_(), N1_(), A_(CGAL::IDENTITY) {
     // Ensure that each multi_array is 3 dimensional
     assert(N_.num_dimensions() == 3 && cell_.num_dimensions() == 3);
     // And that both arrays are the same shape.
@@ -65,6 +65,10 @@ void Grid::addSolid(Nef_polyhedron const& N) {
     #ifndef NDEBUG
     std::cerr << "After union, internal solid has " << N1_.number_of_vertices() << " vertices." << std::endl;
     #endif
+}
+
+void Grid::addTransform(Aff_transformation const& A1) {
+    A_ = A_ * A1; // There's no operator*=!
 }
 
 void Grid::cut() {
@@ -273,6 +277,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         for (unsigned dy = 0; dy < 2; ++dy)
                             for (unsigned dz = 0; dz < 2; ++dz) {
                                 Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
+                                point.transform(A_);
                                 #ifndef NDEBUG
                                 std::cerr << "Fluid cell point at " << point << std::endl;
                                 ++nodes;
@@ -303,6 +308,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                         for (Delaunay_triangulation::Finite_cells_iterator it = Tnew.finite_cells_begin(); it != Tnew.finite_cells_end(); ++it) {
                             for (int i = 0; i < 4; ++i) {
                                 Nef_polyhedron::Point_3 point = it->vertex(i)->point();
+                                point.transform(A_);
                                 tetra_4_elements.push_back(find_or_insert_index_of(points_3, point, xvec, yvec, zvec) + 1); // indices are 1-based.
                             }
                             ++tetra_4_cells;
@@ -390,6 +396,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                     for (unsigned dy = 0; dy < 2; ++dy) {
                         for (unsigned dz = 0; dz < 2; ++dz) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x), static_cast<double>(y + dy), static_cast<double>(z + (dy == 0 ? (1 - dz) : dz)));
+                            point.transform(A_);
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
@@ -417,6 +424,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             if (points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
                                 for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    pointit->transform(A_);
                                     boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
@@ -464,6 +472,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                     for (unsigned dx = 0; dx < 2; ++dx) {
                         for (unsigned dz = 0; dz < 2; ++dz) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y), static_cast<double>(z + (dx == 0 ? (1 - dz) : dz)));
+                            point.transform(A_);
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
@@ -491,6 +500,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             if (points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
                                 for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    pointit->transform(A_);
                                     boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
@@ -538,6 +548,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                     for (unsigned dx = 0; dx < 2; ++dx) {
                         for (unsigned dy = 0; dy < 2; ++dy) {
                             Nef_polyhedron::Point_3 point(static_cast<double>(x + dx), static_cast<double>(y + (dx == 0 ? (1 - dy) : dy)), static_cast<double>(z));
+                            point.transform(A_);
                             #ifndef NDEBUG
                             std::cerr << "Fluid cell boundary point at " << point << std::endl;
                             #endif
@@ -565,6 +576,7 @@ int Grid::output_cgns_file(std::string const& name) const {
                             if (points.size() == 3) {
                                 boundary_elements.push_back(TRI_3);
                                 for (std::vector<Nef_polyhedron::Point_3>::iterator pointit = points.begin(); pointit != points.end(); ++pointit) {
+                                    pointit->transform(A_);
                                     boundary_elements.push_back(find_or_insert_index_of(points_3, *pointit, xvec, yvec, zvec) + 1); // indices are 1-based.
                                 }
                                 ++tri_3_faces;
