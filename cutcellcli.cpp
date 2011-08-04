@@ -25,6 +25,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <string.h> // For strerror.
+#include <errno.h>
 
 int main(int argc, char **argv) {
     int NX, NY, NZ;
@@ -68,8 +70,14 @@ int main(int argc, char **argv) {
     // Read the OFF format from the input file or stdin.
     if (vm.count("input-file")) {
         std::ifstream in(vm["input-file"].as<std::string>().c_str());
-        CGAL::scan_OFF(in, P, true);
-        badbit = in.bad();
+        if (!in) {
+            std::cerr << "Failed to open input file. Unreliable error message: " << strerror(errno) << std::endl;
+            badbit = true;
+        }
+        else {
+            CGAL::scan_OFF(in, P, true);
+            badbit = in.bad();
+        }
     } else {
         CGAL::scan_OFF(std::cin, P, true);
         badbit = std::cin.bad();
