@@ -27,6 +27,8 @@ public slots:
     void getInFile();
     void getOutFile();
     void cubicGridSlot();
+    void cubicCellSlot();
+    void cubicOriginSlot();
 
 private:
     GenerateThread *thread;

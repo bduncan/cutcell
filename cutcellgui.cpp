@@ -31,7 +31,9 @@
 cutcellgui::cutcellgui(QWidget *parent) {
     setupUi(this);
 
-    connect(cubicButton, SIGNAL(clicked()), this, SLOT(cubicGridSlot()));
+    connect(cellSizeCubicButton, SIGNAL(clicked()), this, SLOT(cubicCellSlot()));
+    connect(gridSizeCubicButton, SIGNAL(clicked()), this, SLOT(cubicGridSlot()));
+    connect(originCubicButton, SIGNAL(clicked()), this, SLOT(cubicOriginSlot()));
     connect(offOpenButton, SIGNAL(clicked()), this, SLOT(getInFile()));
     connect(cgnsOpenButton, SIGNAL(clicked()), this, SLOT(getOutFile()));
     connect(generateButton, SIGNAL(clicked()), this, SLOT(generateSlot()));
@@ -40,10 +42,22 @@ cutcellgui::cutcellgui(QWidget *parent) {
     statusbar->addWidget(statusBarLabel);
 }
 
+void cutcellgui::cubicCellSlot() {
+    double Xsize = cellSizeXDoubleSpinBox->value();
+    cellSizeYDoubleSpinBox->setValue(Xsize);
+    cellSizeZDoubleSpinBox->setValue(Xsize);
+}
+
 void cutcellgui::cubicGridSlot() {
-    double Xsize = gridSizeXSpinBox->value();
+    int Xsize = gridSizeXSpinBox->value();
     gridSizeYSpinBox->setValue(Xsize);
     gridSizeZSpinBox->setValue(Xsize);
+}
+
+void cutcellgui::cubicOriginSlot() {
+    double Xsize = originXDoubleSpinBox->value();
+    originYDoubleSpinBox->setValue(Xsize);
+    originZDoubleSpinBox->setValue(Xsize);
 }
 
 void cutcellgui::getInFile() {
@@ -80,6 +94,7 @@ void GenerateThread::run() {
     cutcellgui *p = reinterpret_cast<cutcellgui*>(parent());
     assert(p);
     // Store the values of the widgets' data now, before they can be changed.
+    // FIXME should just disable the widgets
     double transX = p->translationXSpinBox->value(),
            transY = p->translationYSpinBox->value(),
            transZ = p->translationZSpinBox->value(),
@@ -87,6 +102,12 @@ void GenerateThread::run() {
     int gridX = p->gridSizeXSpinBox->value(),
         gridY = p->gridSizeYSpinBox->value(),
         gridZ = p->gridSizeZSpinBox->value();
+    double dx = p->cellSizeXDoubleSpinBox->value(),
+           dy = p->cellSizeYDoubleSpinBox->value(),
+           dz = p->cellSizeZDoubleSpinBox->value();
+    double x0 = p->originXDoubleSpinBox->value(),
+           y0 = p->originYDoubleSpinBox->value(),
+           z0 = p->originZDoubleSpinBox->value();
     std::string outFile = qPrintable(p->cgnsFileLineEdit->text());
     // Read the OFF format from the input file or stdin.
     p->statusBarLabel->setText("Opening file...");
@@ -116,6 +137,10 @@ void GenerateThread::run() {
     p->statusBarLabel->setText("Creating grid...");
     cutcell::Grid grid(gridX, gridY, gridZ);
 
+    // Register the cell size and origin transform
+    grid.addTransform(cutcell::Aff_transformation(dx, 0,  0,  x0,
+                                                  0,  dy, 0,  y0,
+                                                  0,  0,  dz, z0));
     // Cut the grid to the object.
     p->statusBarLabel->setText("Cutting...");
     grid.addSolid(N1);
