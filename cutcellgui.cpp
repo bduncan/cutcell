@@ -85,6 +85,8 @@ void cutcellgui::getOutFile() {
 }
 
 void cutcellgui::generateSlot() {
+    // Disable the GUI so that the values cannot be changed as the thread reads them.
+    setEnabled(false);
     thread = new GenerateThread(this);
     thread->start();
 }
@@ -93,28 +95,13 @@ void GenerateThread::run() {
     cutcell::Polyhedron P;
     cutcellgui *p = reinterpret_cast<cutcellgui*>(parent());
     assert(p);
-    // Store the values of the widgets' data now, before they can be changed.
-    // FIXME should just disable the widgets
-    double transX = p->translationXSpinBox->value(),
-           transY = p->translationYSpinBox->value(),
-           transZ = p->translationZSpinBox->value(),
-           scaling = p->scalingSpinBox->value();
-    int gridX = p->gridSizeXSpinBox->value(),
-        gridY = p->gridSizeYSpinBox->value(),
-        gridZ = p->gridSizeZSpinBox->value();
-    double dx = p->cellSizeXDoubleSpinBox->value(),
-           dy = p->cellSizeYDoubleSpinBox->value(),
-           dz = p->cellSizeZDoubleSpinBox->value();
-    double x0 = p->originXDoubleSpinBox->value(),
-           y0 = p->originYDoubleSpinBox->value(),
-           z0 = p->originZDoubleSpinBox->value();
-    std::string outFile = qPrintable(p->cgnsFileLineEdit->text());
-    // Read the OFF format from the input file or stdin.
+    // Read the OFF format from the input file.
     p->statusBarLabel->setText("Opening file...");
     std::ifstream in(qPrintable(p->offFileLineEdit->text()));
     if (!in) {
         // ifstream doesn't provide any way to retrieve the error message, though...
         p->statusBarLabel->setText("Open failed");
+        p->setEnabled(true);
         return;
     }
     p->statusBarLabel->setText("Reading OFF...");
@@ -122,25 +109,28 @@ void GenerateThread::run() {
     CGAL::scan_OFF(in, P, true);
     if (in.bad()) {
         p->statusBarLabel->setText("Input file does not contain a permissible polyhedral surface.");
+        p->setEnabled(true);
         return;
     }
     cutcell::Nef_polyhedron N1(P);
     // Transform the object accordingly.
     p->statusBarLabel->setText("Translating and scaling...");
-    cutcell::Aff_transformation Aff1(cutcell::SCALING, scaling);
+    cutcell::Aff_transformation Aff1(cutcell::SCALING, p->scalingSpinBox->value());
     cutcell::Aff_transformation Aff2(cutcell::TRANSLATION,
-                                     cutcell::Vector(transX, transY, transZ));
+                                     cutcell::Vector(p->translationXSpinBox->value(),
+                                                     p->translationYSpinBox->value(),
+                                                     p->translationZSpinBox->value()));
     N1.transform(Aff1);
     N1.transform(Aff2);
 
     // Create the cutting grid.
     p->statusBarLabel->setText("Creating grid...");
-    cutcell::Grid grid(gridX, gridY, gridZ);
+    cutcell::Grid grid(p->gridSizeXSpinBox->value(), p->gridSizeYSpinBox->value(), p->gridSizeZSpinBox->value());
 
     // Register the cell size and origin transform
-    grid.addTransform(cutcell::Aff_transformation(dx, 0,  0,  x0,
-                                                  0,  dy, 0,  y0,
-                                                  0,  0,  dz, z0));
+    grid.addTransform(cutcell::Aff_transformation(p->cellSizeXDoubleSpinBox->value(), 0,  0,  p->originXDoubleSpinBox->value(),
+                                                  0,  p->cellSizeYDoubleSpinBox->value(), 0,  p->originYDoubleSpinBox->value(),
+                                                  0,  0,  p->cellSizeZDoubleSpinBox->value(), p->originZDoubleSpinBox->value()));
     // Cut the grid to the object.
     p->statusBarLabel->setText("Cutting...");
     grid.addSolid(N1);
@@ -148,8 +138,9 @@ void GenerateThread::run() {
 
     // Output the grid in CGNS format.
     p->statusBarLabel->setText("Writing CGNS...");
-    grid.output_cgns_file(outFile);
+    grid.output_cgns_file(qPrintable(p->cgnsFileLineEdit->text()));
     p->statusBarLabel->setText("Done.");
+    p->setEnabled(true);
 }
 
 int main(int argc, char **argv) {
