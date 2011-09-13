@@ -1,0 +1,38 @@
+\documentclass[a4paper,10pt]{article}
+\usepackage[utf8x]{inputenc}
+
+%opening
+\title{Cartesian Cut Cell Grid Generator}
+\author{Bruce Duncan}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This software implements the Cut Cell method as described by \cite{dingram}. It
+is intended to provide a computation mesh for the simulation of the flow around
+solid bodies in Code\_Saturne \cite{code_saturne}.
+
+\section{Method}
+
+\section{Implementation}
+
+The software uses the Computational Geometry Algorithms Library (CGAL)
+\cite{cgal}, which is a C++ library which uses templates to provide different
+behaviour through various number ``kernels''. It provides ``Nef\_polyhedra'', a
+polyhedron whose structure is specified through a local sphere map description.
+
+The ``cutcell'' program is written in C++ to allow easy integration with CGAL
+and the CFD General Notation System (CGNS) \cite{cgns}, which is well supported
+by Code\_Saturne.
+
+\section{Usage Instructions}
+
+The software consists of two user interfaces to the library, one Graphical User
+Interface (GUI) and one Command Line Interface (CLI).
+
+\section{Results}
+
+\end{document}
