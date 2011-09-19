@@ -102,6 +102,11 @@ void GenerateThread::run() {
     cutcell::Polyhedron P;
     cutcellgui *p = reinterpret_cast<cutcellgui*>(parent());
     assert(p);
+    // A quick check that the output file has at least been set...
+    if (p->cgnsFileLineEdit->text().isEmpty()) {
+        emit done(true, "Output file not specified.");
+        return;
+    }
     // Read the OFF format from the input file.
     emit done(false, "Opening file...");
     std::ifstream in(qPrintable(p->offFileLineEdit->text()));
