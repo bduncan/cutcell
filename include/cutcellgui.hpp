@@ -10,6 +10,8 @@ class GenerateThread : public QThread
 public:
     GenerateThread(QWidget *parent = 0) : QThread(parent) {};
     void run();
+signals:
+    void done(bool, QString);
 };
 
 class cutcellgui : public QMainWindow, private Ui::MainWindow
@@ -29,6 +31,7 @@ public slots:
     void cubicGridSlot();
     void cubicCellSlot();
     void cubicOriginSlot();
+    void done(bool, QString);
 
 private:
     GenerateThread *thread;

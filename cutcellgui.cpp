@@ -86,9 +86,16 @@ void cutcellgui::getOutFile() {
 
 void cutcellgui::generateSlot() {
     // Disable the GUI so that the values cannot be changed as the thread reads them.
+    // It's not clear that this provides actual thread-safety, but it seems to work in testing.
     setEnabled(false);
     thread = new GenerateThread(this);
+    connect(thread, SIGNAL(done(bool, QString)), this, SLOT(done(bool, QString)));
     thread->start();
+}
+
+void cutcellgui::done(bool enabled, QString message) {
+    statusBarLabel->setText(message);
+    setEnabled(enabled);
 }
 
 void GenerateThread::run() {
@@ -96,25 +103,23 @@ void GenerateThread::run() {
     cutcellgui *p = reinterpret_cast<cutcellgui*>(parent());
     assert(p);
     // Read the OFF format from the input file.
-    p->statusBarLabel->setText("Opening file...");
+    emit done(false, "Opening file...");
     std::ifstream in(qPrintable(p->offFileLineEdit->text()));
     if (!in) {
         // ifstream doesn't provide any way to retrieve the error message, though...
-        p->statusBarLabel->setText("Open failed");
-        p->setEnabled(true);
+        emit done(true, "Open failed.");
         return;
     }
-    p->statusBarLabel->setText("Reading OFF...");
+    emit done(false, "Reading OFF...");
     // parse the file as a Nef_polyhedron object.
     CGAL::scan_OFF(in, P, true);
     if (in.bad()) {
-        p->statusBarLabel->setText("Input file does not contain a permissible polyhedral surface.");
-        p->setEnabled(true);
+        emit done(true, "Input file does not contain a permissible polyhedral surface.");
         return;
     }
     cutcell::Nef_polyhedron N1(P);
     // Transform the object accordingly.
-    p->statusBarLabel->setText("Translating and scaling...");
+    emit done(false, "Translating and scaling...");
     cutcell::Aff_transformation Aff1(cutcell::SCALING, p->scalingSpinBox->value());
     cutcell::Aff_transformation Aff2(cutcell::TRANSLATION,
                                      cutcell::Vector(p->translationXSpinBox->value(),
@@ -124,7 +129,7 @@ void GenerateThread::run() {
     N1.transform(Aff2);
 
     // Create the cutting grid.
-    p->statusBarLabel->setText("Creating grid...");
+    emit done(false, "Creating grid...");
     cutcell::Grid grid(p->gridSizeXSpinBox->value(), p->gridSizeYSpinBox->value(), p->gridSizeZSpinBox->value());
 
     // Register the cell size and origin transform
@@ -132,15 +137,14 @@ void GenerateThread::run() {
                                                   0,  p->cellSizeYDoubleSpinBox->value(), 0,  p->originYDoubleSpinBox->value(),
                                                   0,  0,  p->cellSizeZDoubleSpinBox->value(), p->originZDoubleSpinBox->value()));
     // Cut the grid to the object.
-    p->statusBarLabel->setText("Cutting...");
+    emit done(false, "Cutting...");
     grid.addSolid(N1);
     grid.cut();
 
     // Output the grid in CGNS format.
-    p->statusBarLabel->setText("Writing CGNS...");
+    emit done(false, "Writing CGNS...");
     grid.output_cgns_file(qPrintable(p->cgnsFileLineEdit->text()));
-    p->statusBarLabel->setText("Done.");
-    p->setEnabled(true);
+    emit done(true, "Done.");
 }
 
 int main(int argc, char **argv) {
