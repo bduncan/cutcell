@@ -1,6 +1,6 @@
 \documentclass[a4paper,10pt]{article}
 \usepackage[utf8x]{inputenc}
-
+\usepackage{graphicx}
 %opening
 \title{Cartesian Cut Cell Grid Generator}
 \author{Bruce Duncan}
@@ -55,11 +55,27 @@ supported by Code\_Saturne.
 
 \section{Usage Instructions}
 
+\begin{figure}[!tbh]
+ \centering
+ \includegraphics[keepaspectratio=true,width=\textwidth]{./cutcellgui.pdf}
+ % cutcellgui.pdf: 595x842 pixel, 72dpi, 20.99x29.70 cm, bb=0 0 595 842
+ \caption{The cutcell GUI}
+ \label{fig:gui}
+\end{figure}
+
 The software consists of two user interfaces to the library, one Graphical User
-Interface (GUI) and one Command Line Interface (CLI). Both allow the user to
-convert a polyhedral surface in Object File Format (OFF) to a CGNS mesh. Both
-allow the user to specify scaling and translation parameters for the input
-solid, and allow a grid size, cell size and origin to be specified.
+Interface (GUI) shown in Figure~\ref{fig:gui} and one Command Line Interface
+(CLI). Both allow the user to convert a polyhedral surface in Object File Format
+(OFF) to a CGNS mesh. Both allow the user to specify scaling and translation
+parameters for the input solid, and allow a grid size, cell size and origin to
+be specified.
+
+In using the GUI, the user is presented with default values for the position of
+the input solid and the properties of the grid, these being zero or one as
+appropriate. The position and size of the input solid may be specified as a
+translation vector and a scale factor in three dimensions. The output CGNS grid
+may have an arbitrary cell size in three dimensions, an integer number of grid
+cells in each dimension and an arbitrary translation vector for the origin.
 
 \section{Results}
 
