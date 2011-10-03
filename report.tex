@@ -278,7 +278,42 @@ debugging, if configured, are written on standard error.
 
 \section{Examples}
 
+\subsection{Airfoil}
 
+We create an airfoil using Xfoil \cite{xfoil}, transform the 2D coordinates into
+a 3D solid and cut it using our algorithm. We then import the grid into
+Code\_Saturne.
+
+First, open Xfoil. Select a NACA 0012 airfoil by entering \texttt{NACA 0012}. To
+generate a reasonable size grid, we reduce the number of points being used. Open
+the panelling parameters menu by typing \texttt{ppar} \footnote{This opens
+another window showing the buffer, experience suggests that closing this window
+will cause a crash.}. Alter the number of panel nodes by typing \texttt{n} and
+entering \texttt{40}. Output the grid by typing \texttt{psav out.off}.
+
+Next, we convert this 2D grid into a 3D solid. This can be done by hand or by
+using the supplied \texttt{3dairfoil.py} program. We use the python program as
+a filter: \texttt{3dairfoil.py < out.off > airfoil.off}.
+
+At this point, we can confirm that the airfoil is output as expected by reading
+it in a program such as geomview \cite{geomview}.
+
+Next, the generated OFF file is supplied to the cutcell program. We want to
+generate a large enough grid to produce a meaningful simulation, so we use a
+grid of size $120 x 60 x 40$. We place the airfoil at roughly the centre of the
+domain by applying an offset of $40 x 30 x 0$. We want an airfoil such that
+there is approximately one airfoil point per grid point, so apply a scale
+factor of $40$:
+
+\begin{verbatim}
+cutcell -I ../airfoil_40_3d.off -O out.cgns
+-X 120 -Y 60 -Z 40
+-x 40 -y 30
+--scaling 40
+\end{verbatim}
+
+Once the gridding is complete, we can check the CGNS output using the adfviewer
+and cgnsplot tools provided with CGNS.
 
 \bibliographystyle{plain}
 \bibliography{report}
