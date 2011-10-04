@@ -18,30 +18,14 @@ set. These are triangles.
 """
 
 import sys
-from contextlib import contextmanager
-
-
-@contextmanager
-def opendash(args, i=1, mode='r'):
-    """Open a file.
-
-    Open the file given at the index of a list, or stdin if that index doesn't
-    exist or is the string '-'.
-
-    """
-
-    if i >= len(args) or args[i] == '-':
-        yield sys.stdin
-    else:
-        yield open(args[i], mode)
+import fileinput
 
 
 def main():
     # Read the x,y points from the named file or standard input.
     points = []
-    with opendash(sys.argv) as f:
-        for line in f:
-            points += [[float(x) for x in line.split()], ]
+    for line in fileinput.input():
+        points += [[float(x) for x in line.split()], ]
 
     np = len(points)
     with sys.stdout as f:
