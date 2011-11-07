@@ -315,6 +315,43 @@ cutcell -I ../airfoil_40_3d.off -O out.cgns
 Once the gridding is complete, we can check the CGNS output using the adfviewer
 and cgnsplot tools provided with CGNS.
 
+The CGNS file is now ready to be used in Code\_Saturne. For the tests, version
+2.0.1 was used. The exact process may differ in other versions. Begin by
+creating a case:
+
+\begin{verbatim}
+ code_saturne --create CASE
+ mkdir MESH
+\end{verbatim}
+
+Move the generated CGNS file (\verb|out.cgns|) into the \verb|MESH| directory.
+Start the GUI:
+
+\begin{verbatim}
+ cd CASE # Code_Saturne will find data files automatically here.
+ DATA/SaturneGUI
+\end{verbatim}
+
+and create a new file using the \textit{File} menu. Check that the
+sub-directories of the case are all correct. If not, navigate to the directory
+of the case.
+
+Expand the groups in the left pane. In the ``Meshes selection'' page check that
+the \verb|out.cgns| file has been found. In ``Mesh quality criteria'', check
+``Check mesh'' and save the result as \verb|listpre.mesh| in the \verb|RESU|
+directory. Set up the other pages as required.
+
+In ``Definition of boundary regions'', importing the preprocessor listing
+(\texttt{\hyphenchar\font45\relax list\-pre\-.mesh}) should populate the list of
+boundary regions with $I$, $J$ and $K$ faces for each $Hi$ and $Lo$, each having
+$Cut$ and/or $Fluid$ faces as appropriate. Click ``Add'' to create a default
+group for the internal boundaries. On the next page, set up the boundary regions
+required.
+% More detail here?
+
+Next, save the parameters as \verb|case.xml| in the \verb|DATA| directory and
+run the case from ``Prepare batch calculation''.
+
 \bibliographystyle{plain}
 \bibliography{report}
 
